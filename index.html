@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>LAIFT Engine</title>
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;800&family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #010510;
+      --panel-bg: #0a0f1e;
+      --neon-cyan: #00e5ff;
+      --neon-green: #00ff88;
+      --neon-magenta: #ff00aa;
+      --alert-red: #ff1744;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --text-primary: #e0e0e0;
+      --text-secondary: #90a4ae;
+      --font-mono: 'Fira Code', monospace;
+      --font-ui: 'Urbanist', sans-serif;
+      --glow-cyan: 0 0 20px rgba(0, 229, 255, 0.3);
+      --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      padding: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background-image: radial-gradient(ellipse at 50% 0%, rgba(0,229,255,0.06) 0%, transparent 70%),
+                        radial-gradient(ellipse at 80% 100%, rgba(255,0,170,0.04) 0%, transparent 60%);
+    }
+    header { text-align: center; margin-bottom: 0.5rem; position: relative; }
+    header h1 {
+      font-size: 1.8rem; font-weight: 800; letter-spacing: 3px;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; animation: titleShimmer 4s ease-in-out infinite;
+    }
+    @keyframes titleShimmer { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.4)} }
+    .badge {
+      display: inline-block; background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-subtle); border-radius: 20px;
+      padding: 4px 14px; font-size: 0.7rem; color: var(--text-secondary);
+      letter-spacing: 2px; margin-top: 4px;
+    }
+    .manual-btn {
+      position: absolute; top: 0; right: 0;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle);
+      border-radius: 8px; color: var(--neon-cyan); font-size: 1.3rem;
+      width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: var(--transition-smooth); backdrop-filter: blur(4px);
+    }
+    .manual-btn:hover { background: rgba(0,229,255,0.2); box-shadow: 0 0 15px rgba(0,229,255,0.4); }
+    .main-grid {
+      display: grid; grid-template-columns: 360px 1fr 270px;
+      gap: 0.9rem; width: 100%; max-width: 1500px; align-items: start;
+    }
+    @media (max-width: 1300px) {
+      .main-grid { grid-template-columns: 340px 1fr; }
+      .side-panel-right { grid-column: 1/-1; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    }
+    @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--panel-bg); border: 1px solid var(--border-subtle);
+      border-radius: 14px; padding: 1rem; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+    }
+    .panel h3 {
+      font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px;
+      color: var(--neon-cyan); margin-bottom: 0.8rem; font-weight: 700;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .icon-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--neon-cyan); box-shadow: var(--glow-cyan);
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot { 0%,100%{box-shadow:0 0 8px var(--neon-cyan)} 50%{box-shadow:0 0 20px var(--neon-cyan),0 0 40px rgba(0,229,255,0.5)} }
+    .controls-scroll { max-height: 70vh; overflow-y: auto; padding-right: 4px; }
+    .controls-scroll::-webkit-scrollbar { width: 4px; }
+    .controls-scroll::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 4px; }
+    select, input[type="number"] {
+      width: 100%; padding: 0.5rem 0.7rem; border-radius: 8px;
+      border: 1px solid #1e3a5f; background: #020617; color: #e0e0e0;
+      font-family: var(--font-mono); font-size: 0.75rem; outline: none;
+      transition: var(--transition-smooth);
+    }
+    select:focus, input:focus { border-color: var(--neon-cyan); box-shadow: 0 0 12px rgba(0,229,255,0.2); }
+    input[type="range"] { width: 100%; accent-color: var(--neon-cyan); cursor: pointer; }
+    label {
+      font-size: 0.68rem; color: var(--text-secondary); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1px; display: block;
+      margin-bottom: 3px; margin-top: 6px;
+    }
+    .btn-row { display: flex; gap: 5px; flex-wrap: wrap; }
+    .btn {
+      flex: 1; min-width: 55px; padding: 0.5rem 0.4rem; border: none;
+      border-radius: 8px; font-weight: 700; cursor: pointer; text-transform: uppercase;
+      font-size: 0.65rem; letter-spacing: 1px; transition: var(--transition-smooth);
+      position: relative; overflow: hidden;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+    .btn:active { transform: scale(0.95); }
+    .btn-play { background: var(--neon-green); color: #000; }
+    .btn-stop { background: #ff9800; color: #000; }
+    .btn-fire { background: #ff5722; color: #fff; }
+    .btn-ice { background: #4fc3f7; color: #000; }
+    .btn-lock { background: #7c4dff; color: #fff; }
+    .btn-reset { background: transparent; border: 2px solid var(--alert-red); color: var(--alert-red); }
+    .btn-reset:hover { background: var(--alert-red); color: #fff; }
+    .btn-clear { background: transparent; border: 1px solid #546e7a; color: #b0bec5; font-size: 0.6rem; padding: 0.25rem 0.5rem; }
+    .btn-clear:hover { background: #546e7a; color: #fff; }
+    .btn.active-btn { box-shadow: inset 0 0 0 3px #fff, 0 0 18px currentColor; transform: scale(0.96); }
+    .reagent-catalog {
+      max-height: 220px; overflow-y: auto; border: 1px solid #1e3a5f;
+      border-radius: 8px; background: #020617;
+    }
+    .reagent-catalog::-webkit-scrollbar { width: 4px; }
+    .reagent-catalog::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    details { border-bottom: 1px solid #1e293b; }
+    details:last-child { border-bottom: none; }
+    summary {
+      padding: 7px 10px; cursor: pointer; font-size: 0.72rem; font-weight: 700;
+      color: #b0bec5; user-select: none; transition: 0.2s; background: #0f172a;
+      letter-spacing: 0.5px;
+    }
+    summary:hover { color: var(--neon-cyan); background: #1a2740; }
+    .reagent-list label {
+      display: flex; align-items: center; padding: 5px 10px; margin: 0;
+      cursor: pointer; font-size: 0.68rem; color: #90a4ae; font-weight: 400;
+      border-top: 1px dashed #1e293b; transition: 0.15s; letter-spacing: 0;
+      text-transform: none;
+    }
+    .reagent-list label:hover { background: rgba(0,229,255,0.08); color: #fff; }
+    .reagent-list input[type="radio"] { margin-right: 8px; accent-color: var(--neon-green); transform: scale(1.1); width: auto; }
+    .visual-stage {
+      background: radial-gradient(ellipse at center, #0a1628 0%, #010510 100%);
+      border-radius: 14px; border: 1px solid var(--border-subtle);
+      position: relative; overflow: hidden; min-height: 550px;
+      display: flex; flex-direction: column;
+      box-shadow: inset 0 0 80px rgba(0,0,0,0.6);
+    }
+    .bench {
+      position: absolute; bottom: 0; width: 100%; height: 55px;
+      background: linear-gradient(to bottom, #1a2540, #0a0f1e);
+      border-top: 4px solid #2a3a5a; z-index: 10;
+      box-shadow: 0 -8px 30px rgba(0,0,0,0.5);
+    }
+    .tripod {
+      position: absolute; bottom: 53px; left: 50%; transform: translateX(-50%);
+      width: 140px; height: 25px; border-top: 5px solid #5a6a8a;
+      border-left: 3px solid #4a5a7a; border-right: 3px solid #4a5a7a;
+      z-index: 12; border-radius: 6px 6px 0 0;
+    }
+    .glassware-zone {
+      position: absolute; bottom: 78px; left: 50%; transform: translateX(-50%);
+      z-index: 15; display: flex; justify-content: center; align-items: flex-end;
+    }
+    .glass-vessel {
+      border: 4px solid rgba(255,255,255,0.35); border-top: none;
+      position: relative; transition: all 0.5s ease; border-radius: 0 0 12px 12px;
+      box-shadow: inset 0 0 30px rgba(0,0,0,0.4), 0 0 20px rgba(0,229,255,0.05);
+    }
+    .vessel-beaker { width: 150px; height: 180px; border-radius: 0 0 18px 18px; }
+    .vessel-flask {
+      width: 150px; height: 180px; border: none;
+      background: rgba(255,255,255,0.06);
+      clip-path: polygon(38% 0%, 62% 0%, 62% 25%, 100% 100%, 0% 100%, 38% 25%);
+    }
+    .stopper-cap {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      width: 30px; height: 16px; background: #5d4037; border-radius: 4px;
+      display: none; z-index: 20;
+    }
+    .closed-system .stopper-cap { display: block; }
+    .content-fill {
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
+      border-radius: inherit; overflow: hidden;
+    }
+    .liquid-layer {
+      position: absolute; bottom: 0; width: 100%; height: 0%;
+      transition: height 0.3s, background-color 0.8s;
+    }
+    .precipitate-layer {
+      position: absolute; bottom: 0; width: 100%; height: 0%;
+      transition: height 0.5s, background-color 0.5s;
+      background-image: radial-gradient(rgba(0,0,0,0.35) 2px, transparent 2px);
+      background-size: 7px 7px; z-index: 2;
+    }
+    .gas-halo {
+      position: absolute; bottom: 0; width: 100%; height: 100%;
+      opacity: 0; transition: opacity 0.8s, background 0.8s; z-index: 4;
+    }
+    .bubble-overlay {
+      position: absolute; bottom: 0; width: 100%; height: 100%;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.5) 1.5px, transparent 2px);
+      background-size: 14px 22px; animation: bubbleRise 0.4s infinite linear;
+      opacity: 0; transition: opacity 0.3s; z-index: 3; pointer-events: none;
+    }
+    @keyframes bubbleRise { 0% { background-position: 0 22px; } 100% { background-position: 0 0; } }
+    .freeze-overlay {
+      position: absolute; bottom: 0; width: 100%; height: 100%;
+      background: linear-gradient(0deg, rgba(180,220,255,0.7) 0%, rgba(255,255,255,0.4) 30%, transparent 70%);
+      opacity: 0; transition: opacity 0.5s; z-index: 6; pointer-events: none;
+      border-radius: inherit;
+    }
+    .hud-overlay {
+      position: absolute; top: 12px; left: 12px; right: 12px;
+      display: flex; justify-content: space-between; z-index: 30; pointer-events: none;
+    }
+    .hud-card {
+      background: rgba(0,0,0,0.8); border: 1px solid #1e3a5f;
+      padding: 8px 12px; border-radius: 10px; font-size: 0.7rem;
+      backdrop-filter: blur(6px); min-width: 100px;
+    }
+    .hud-card .hud-val { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0,229,255,0.5); }
+    .hud-card .hud-label { font-size: 0.6rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
+    .press-warning { color: #ff9800; font-size: 0.65rem; margin-left: 4px; display: none; }
+    .press-critical { color: #ff1744; font-weight: bold; animation: blink 0.5s infinite; }
+    @keyframes blink { 50% { opacity: 0.3; } }
+    .thermo-column {
+      position: absolute; left: 15px; bottom: 130px; z-index: 20;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .thermo-stick {
+      width: 9px; height: 90px; background: rgba(255,255,255,0.08);
+      border-radius: 8px 8px 0 0; border: 1px solid #1e3a5f;
+      position: relative; overflow: hidden;
+    }
+    .thermo-fill-bar {
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 30%;
+      transition: height 0.4s, background-color 0.6s; border-radius: 0 0 8px 8px;
+    }
+    .thermo-bulb-circle {
+      width: 18px; height: 18px; border-radius: 50%; border: 1px solid #1e3a5f;
+      margin-top: -2px; transition: background-color 0.6s;
+    }
+    .flame-effect {
+      position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center;
+      opacity: 0; transition: opacity 0.4s; z-index: 5;
+    }
+    .flame-core {
+      width: 25px; height: 34px;
+      background: radial-gradient(ellipse at bottom, #4fc3f7 5%, #ff9800 60%, transparent 100%);
+      border-radius: 50% 50% 20% 20%; animation: flickerFlame 0.08s infinite alternate;
+      margin-bottom: -4px;
+    }
+    @keyframes flickerFlame { 0% { transform: scaleX(0.9) rotate(-2deg); } 100% { transform: scaleX(1.1) rotate(3deg); } }
+    .flame-base { width: 16px; height: 10px; background: #5a6a8a; border-radius: 2px; }
+    .ice-aura-effect {
+      position: absolute; bottom: 65px; left: 50%; transform: translateX(-50%);
+      width: 120px; height: 25px;
+      background: radial-gradient(ellipse, rgba(79,195,247,0.6) 0%, transparent 70%);
+      border-radius: 50%; filter: blur(5px); opacity: 0; transition: opacity 0.4s;
+      z-index: 5; animation: chillPulse 2s infinite alternate;
+    }
+    @keyframes chillPulse { 0% { transform: translateX(-50%) scale(1); opacity: 0.7; } 100% { transform: translateX(-50%) scale(1.15); opacity: 0.3; } }
+    .alert-fullscreen {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(183,28,28,0.92); display: none; justify-content: center;
+      align-items: center; z-index: 50; flex-direction: column; text-align: center; padding: 2rem;
+    }
+    .manual-modal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+      display: none; justify-content: center; align-items: center; z-index: 100;
+    }
+    .manual-content {
+      background: var(--panel-bg); border: 1px solid var(--neon-cyan);
+      border-radius: 20px; max-width: 700px; width: 90%;
+      max-height: 80vh; overflow-y: auto; padding: 2rem;
+      box-shadow: 0 0 40px rgba(0,229,255,0.3);
+    }
+    .manual-content h3 { color: var(--neon-cyan); margin-bottom: 1rem; }
+    .manual-content p, .manual-content li { font-size: 0.85rem; color: #b0bec5; margin-bottom: 0.6rem; }
+    .close-manual {
+      background: var(--alert-red); border: none; color: white;
+      padding: 0.5rem 1.5rem; border-radius: 6px; cursor: pointer;
+      margin-top: 1rem; font-weight: bold;
+    }
+    .alert-fullscreen h2 { font-size: 2rem; text-transform: uppercase; color: #fff; letter-spacing: 3px; }
+    .alert-fullscreen p { color: #ffcdd2; margin: 8px 0; }
+    .side-panel-right { display: flex; flex-direction: column; gap: 0.9rem; }
+    .log-stream {
+      max-height: 160px; overflow-y: auto; font-family: var(--font-mono);
+      font-size: 0.65rem; color: #90a4ae; background: #020617;
+      border-radius: 8px; padding: 6px; border: 1px solid #1e3a5f;
+    }
+    .log-entry { padding: 2px 5px; border-bottom: 1px solid rgba(255,255,255,0.03); display: flex; gap: 6px; }
+    .log-time { color: #546e7a; white-space: nowrap; }
+    .log-warn { color: #ff9800; } .log-danger { color: #ff1744; } .log-info { color: #4fc3f7; }
+    .mini-canvas-wrap { background: #020617; border-radius: 8px; border: 1px solid #1e3a5f; overflow: hidden; }
+    canvas { width: 100%; height: 140px; display: block; }
+    .tag {
+      display: inline-block; padding: 2px 6px; border-radius: 4px;
+      font-size: 0.6rem; font-family: var(--font-mono); margin: 1px; border: 1px solid;
+    }
+    .tag-aq { color: #4fc3f7; border-color: #4fc3f7; }
+    .tag-s { color: #ffd54f; border-color: #ffd54f; }
+    .tag-g { color: #69f0ae; border-color: #69f0ae; }
+    .tag-l { color: #b0bec5; border-color: #b0bec5; }
+    .signature {
+      position: absolute; bottom: 8px; right: 16px; font-family: var(--font-mono);
+      font-size: 0.6rem; color: rgba(255,255,255,0.2); letter-spacing: 2px;
+      z-index: 40; pointer-events: none; user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚗️ LAIFT Engine</h1>
+    <span class="badge">Laboratório Acadêmico</span>
+    <div class="manual-btn" onclick="window.abrirManual()" title="Manual de Instruções">📖</div>
+  </header>
+  <div class="main-grid">
+    <!-- PAINEL ESQUERDO -->
+    <div class="panel" style="display:flex;flex-direction:column;gap:0.6rem;">
+      <h3><span class="icon-dot"></span> Bancada de Controle</h3>
+      <div class="controls-scroll">
+        <label>🧪 Vidraria Ativa</label>
+        <select id="vidrariaSelect" onchange="window.trocarVidraria()">
+          <option value="becker_250" selected>Béquer 250 mL</option>
+          <option value="becker_1000">Béquer 1 L</option>
+          <option value="erlen_250">Erlenmeyer Fechado 250 mL</option>
+          <option value="tubo_20">Tubo de Ensaio 20 mL</option>
+        </select>
+        <label>⚗️ Catálogo de Reagentes</label>
+        <div class="reagent-catalog" id="catalogContainer"></div>
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <div style="flex:1"><label>Volume (mL/g)</label><input type="number" id="qtdInput" value="10" min="0.1" step="0.1"></div>
+          <div style="flex:1"><label>Modo</label><select id="modoAdd"><option value="tudo">Despejo Total</option><option value="jato">Jato (10mL/s)</option><option value="gota">Gota a Gota</option></select></div>
+        </div>
+        <div class="btn-row" style="margin-top:6px;">
+          <button class="btn btn-play" id="btnStartAdd" onclick="window.iniciarAdicao()">▶ Adicionar</button>
+          <button class="btn btn-stop" onclick="window.pararAdicao()">⏸ Parar</button>
+        </div>
+        <label>🔥 Controle Térmico</label>
+        <div style="display:flex;gap:6px;">
+          <div style="flex:1"><label>Alvo °C</label><input type="number" id="tempAlvo" value="25" step="5"></div>
+          <div style="flex:1"><label>Potência</label><input type="range" id="heatSlider" min="1" max="10" value="5" oninput="window.ajustarPotenciaChama(this.value)"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-fire" id="btnHeat" onclick="window.setModoTermico('aquecendo')">🔥 Aquecer</button>
+          <button class="btn btn-lock" id="btnThermostat" onclick="window.setModoTermico('termostato')">🔒 Travar</button>
+          <button class="btn btn-ice" id="btnCool" onclick="window.setModoTermico('resfriando')">❄️ Resfriar</button>
+        </div>
+        <button class="btn btn-reset" style="width:100%;margin-top:8px;" onclick="window.resetarLaboratorio()">🗑️ Limpar Tudo</button>
+      </div>
+    </div>
+    <!-- PALCO VISUAL -->
+    <div class="visual-stage" id="visualStage">
+      <div class="hud-overlay">
+        <div class="hud-card"><span class="hud-label">Temperatura</span><span class="hud-val" id="hudTemp">25.0 °C</span></div>
+        <div class="hud-card"><span class="hud-label">Pressão</span><span class="hud-val" id="hudPress">1.00 atm</span><span id="pressWarn" class="press-warning">⚠</span></div>
+        <div class="hud-card"><span class="hud-label">pH</span><span class="hud-val" id="hudPH">7.00</span></div>
+      </div>
+      <div class="thermo-column">
+        <div class="thermo-stick"><div class="thermo-fill-bar" id="thermoFill"></div></div>
+        <div class="thermo-bulb-circle" id="thermoBulb"></div>
+      </div>
+      <div class="tripod"></div>
+      <div class="glassware-zone" id="glasswareZone">
+        <div class="droplet-indicator" id="droplet"></div>
+        <div class="glass-vessel vessel-beaker" id="vessel">
+          <div class="stopper-cap"></div>
+          <div class="content-fill">
+            <div class="liquid-layer" id="liquidLayer"><div class="precipitate-layer" id="precipLayer"></div><div class="bubble-overlay" id="bubbleOverlay"></div></div>
+            <div class="freeze-overlay" id="freezeOverlay"></div>
+            <div class="gas-halo" id="gasHalo"></div>
+          </div>
+        </div>
+      </div>
+      <div class="flame-effect" id="flameFX"><div class="flame-core"></div><div class="flame-base"></div></div>
+      <div class="ice-aura-effect" id="iceFX"></div>
+      <div class="bench"></div>
+      <div class="alert-fullscreen" id="alertOverlay"><h2 id="alertTitle">⚠️ Alerta</h2><p id="alertMsg"></p><button class="btn btn-stop" style="margin-top:12px;width:180px;" onclick="window.resetarLaboratorio()">Resetar</button></div>
+      <div class="signature">DPF :)</div>
+    </div>
+    <!-- PAINEL DIREITO -->
+    <div class="side-panel-right">
+      <div class="panel">
+        <h3><span class="icon-dot"></span> Espécies no Recipiente</h3>
+        <div id="speciesTags" style="display:flex;flex-wrap:wrap;gap:3px;min-height:25px;"></div>
+        <label style="margin-top:6px;">Volume: <span id="volDisplay" style="color:var(--neon-cyan);font-family:var(--font-mono);">0.0 / 250 mL</span></label>
+      </div>
+      <div class="panel">
+        <h3><span class="icon-dot"></span> Curva de pH (Titulação)</h3>
+        <div class="mini-canvas-wrap"><canvas id="phCanvas"></canvas></div>
+        <button class="btn btn-lock" style="width:100%;margin-top:4px;font-size:0.6rem;" onclick="window.limparCurvaPH()">Limpar Curva</button>
+      </div>
+      <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="margin:0;"><span class="icon-dot"></span> Registro de Eventos</h3>
+          <button class="btn btn-clear" onclick="window.limparRegistro()">🗑 Limpar</button>
+        </div>
+        <div class="log-stream" id="logStream" style="margin-top:6px;"><span style="color:#546e7a;">[Sistema] Laboratório iniciado.</span></div>
+      </div>
+    </div>
+  </div>
+  <!-- MANUAL MODAL -->
+  <div class="manual-modal" id="manualModal">
+    <div class="manual-content">
+      <h3>📖 Manual do Laboratório Quântico</h3>
+      <p><strong>Bem-vindo ao LAIFT Engine.</strong> Aqui você pode simular reações químicas com segurança. Siga as orientações abaixo para explorar o máximo do sistema.</p>
+      <h4 style="color:var(--neon-cyan); margin-top:1rem;">🧪 Regras Básicas</h4>
+      <ul>
+        <li><strong>Adição de reagentes:</strong> escolha no catálogo, defina volume e modo (gota, jato ou despejo).</li>
+        <li><strong>Vidraria:</strong> béqueres abertos evaporam e trocam calor; o erlenmeyer fechado acumula gases e pressão.</li>
+        <li><strong>Temperatura:</strong> use os botões térmicos ou o termostato. A potência do fogo acelera o aquecimento.</li>
+      </ul>
+      <h4 style="color:var(--neon-cyan); margin-top:1rem;">🔥 Ebulição e Congelamento</h4>
+      <ul>
+        <li><strong>Pontos de ebulição:</strong> água (100°C), etanol (78.4°C), acetona (56°C), hexano (68.7°C), benzeno (80.1°C), tolueno (110.6°C), metanol (64.7°C), clorofórmio (61.2°C). Ao atingir a temperatura, o líquido começa a evaporar.</li>
+        <li><strong>Congelamento:</strong> abaixo de 0°C a água congela, etanol a -114°C, acetona a -95°C. O líquido se transforma em sólido, reduzindo o volume líquido.</li>
+      </ul>
+      <h4 style="color:var(--neon-cyan); margin-top:1rem;">⚠️ Combinações Perigosas</h4>
+      <ul>
+        <li><strong>Metais alcalinos (Na, K, Li) + Água:</strong> reação explosiva, libera H₂ e calor. Pode estilhaçar a vidraria.</li>
+        <li><strong>Ácidos fortes + Água sanitária (NaClO):</strong> gera gás cloro (Cl₂), tóxico e pressuriza o sistema.</li>
+        <li><strong>Ácido + Carbonatos:</strong> efervescência rápida de CO₂, risco de transbordamento.</li>
+        <li><strong>Peróxido de hidrogênio + metais de transição (Fe³⁺, Pb²⁺):</strong> decomposição acelerada, libera O₂.</li>
+      </ul>
+      <h4 style="color:var(--neon-cyan); margin-top:1rem;">🧪 Precipitação e Cores</h4>
+      <ul>
+        <li><strong>Ag⁺ + Cl⁻ → precipitado branco (AgCl).</strong></li>
+        <li><strong>Pb²⁺ + I⁻ → amarelo intenso (PbI₂).</strong></li>
+        <li><strong>Cu²⁺ + OH⁻ → azul claro (Cu(OH)₂).</strong></li>
+        <li><strong>Fe³⁺ + OH⁻ → marrom avermelhado (Fe(OH)₃).</strong></li>
+        <li>Consulte a tabela completa no registro de eventos ao realizar misturas.</li>
+      </ul>
+      <p style="margin-top:1rem;"><strong>Dica:</strong> Use fenolftaleína para visualizar mudanças de pH (incolor em ácido, rosa em base).</p>
+      <button class="close-manual" onclick="window.fecharManual()">Fechar Manual</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const MM = {
+        Na:23, Al:27, Zn:65.4, Mg:24.3, CuSO4:159.6, NaCl:58.4, CaCO3:100, KI:166, AgNO3:169.9, PbNO3:331, NaOH:40, HCl:36.5,
+        Li:6.94, K:39.1, Ca:40.08, NaHCO3:84.0, K2CO3:138.2, KOH:56.1, LiOH:23.95, CaOH2:74.09, I2:253.8, S:32.06, P:30.97,
+        Fe:55.8, Ni:58.7, Cu:63.5, Sn:118.7, Pb:207.2, HNO3:63.0, HClO4:100.5, H3PO4:98.0
+      };
+      const CONC_AQ = {
+        H2O2_aq:3.0, PbNO3_aq:1.0, AgNO3_aq:1.0, CdNO3_aq:1.0, CuSO4_aq:1.0, FeCl3_aq:1.0,
+        ZnSO4_aq:1.0, NiCl2_aq:1.0, SbCl3_aq:1.0, CaCl2_aq:1.0, BaCl2_aq:1.0, HCl_aq:6.0,
+        H2SO4_aq:9.0, AcidoAcetico_aq:1.0, KI_aq:1.0, NH42S_aq:1.0, NaOH_aq:6.0, NH3_aq:5.0,
+        Na2CO3_aq:1.0, NaClO_aq:2.0, NaHCO3_aq:1.0, K2CO3_aq:1.0, KOH_aq:6.0, LiOH_aq:5.0,
+        CaOH2_aq:0.5, HNO3_aq:6.0, HClO4_aq:6.0, H3PO4_aq:4.0
+      };
+      const BP = { H2O_l:100, Etanol_l:78.4, Acetona_l:56, Hexano_l:68.7, Benzeno_l:80.1, Tolueno_l:110.6, Metanol_l:64.7, Cloroformio_l:61.2 };
+      const FP = { H2O_l:0, Etanol_l:-114, Acetona_l:-95, Hexano_l:-95, Benzeno_l:5.5, Tolueno_l:-95, Metanol_l:-98, Cloroformio_l:-63.5 };
+      const PRECIP_TABLE = [
+        { cat:'Ag+', an:'Cl-', cC:1, cA:1, prod:'AgCl_s', cor:'#f5f5f5' },
+        { cat:'Pb2+', an:'Cl-', cC:1, cA:2, prod:'PbCl2_s', cor:'#eceff1' },
+        { cat:'Pb2+', an:'I-', cC:1, cA:2, prod:'PbI2_s', cor:'#ffeb3b' },
+        { cat:'Ag+', an:'I-', cC:1, cA:1, prod:'AgI_s', cor:'#fff9c4' },
+        { cat:'Cu2+', an:'OH-', cC:1, cA:2, prod:'Cu(OH)2_s', cor:'#4dd0e1' },
+        { cat:'Fe3+', an:'OH-', cC:1, cA:3, prod:'Fe(OH)3_s', cor:'#8d6e63' },
+        { cat:'Ni2+', an:'OH-', cC:1, cA:2, prod:'Ni(OH)2_s', cor:'#a5d6a7' },
+        { cat:'Ca2+', an:'CO3_2-', cC:1, cA:1, prod:'CaCO3_s', cor:'#fafafa' },
+        { cat:'Ba2+', an:'CO3_2-', cC:1, cA:1, prod:'BaCO3_s', cor:'#f5f5f5' },
+        { cat:'Pb2+', an:'S_2-', cC:1, cA:1, prod:'PbS_s', cor:'#212121' },
+        { cat:'Ag+', an:'S_2-', cC:2, cA:1, prod:'Ag2S_s', cor:'#1a1a1a' },
+        { cat:'Cu2+', an:'S_2-', cC:1, cA:1, prod:'CuS_s', cor:'#1b1b1b' },
+        { cat:'Cd2+', an:'S_2-', cC:1, cA:1, prod:'CdS_s', cor:'#fdd835' },
+        { cat:'Zn2+', an:'S_2-', cC:1, cA:1, prod:'ZnS_s', cor:'#e8eaf6' },
+        { cat:'Sb3+', an:'S_2-', cC:2, cA:3, prod:'Sb2S3_s', cor:'#ff7043' },
+        { cat:'Ca2+', an:'SO4_2-', cC:1, cA:1, prod:'CaSO4_s', cor:'#f5f5f5' },
+        { cat:'Ba2+', an:'SO4_2-', cC:1, cA:1, prod:'BaSO4_s', cor:'#ffffff' },
+        { cat:'Pb2+', an:'SO4_2-', cC:1, cA:1, prod:'PbSO4_s', cor:'#eceff1' }
+      ];
+
+      let sys = {
+        maxVol:250, vol:0, temp:25, pressao:1, isClosed:false,
+        modoTermico:'ambiente', especies:new Map(), shattered:false,
+        fenolftaleina:false
+      };
+      let timerAdd = null, timerLoop = null;
+      let qtdRestante = 0, incrAdd = 1;
+      let phDataPoints = [];
+
+      const logEl = document.getElementById('logStream');
+      const phCanvas = document.getElementById('phCanvas');
+      const phCtx = phCanvas.getContext('2d');
+      phCanvas.width = 280; phCanvas.height = 140;
+
+      function log(msg, cls='') {
+        const now = new Date();
+        const ts = now.toTimeString().slice(0,8);
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `<span class="log-time">[${ts}]</span><span class="${cls}">${msg}</span>`;
+        logEl.prepend(entry);
+        if (logEl.children.length > 70) logEl.removeChild(logEl.lastChild);
+      }
+
+      function limparRegistro() { logEl.innerHTML = '<span style="color:#546e7a;">[Sistema] Registro limpo.</span>'; }
+      function abrirManual() { document.getElementById('manualModal').style.display = 'flex'; }
+      function fecharManual() { document.getElementById('manualModal').style.display = 'none'; }
+
+      function qtd(chave) { return sys.especies.get(chave) || 0; }
+      function adicionarEspecie(chave, mmol) { if (mmol <= 0) return; sys.especies.set(chave, (sys.especies.get(chave)||0)+mmol); }
+      function removerEspecie(chave, mmol) { 
+        const atual = sys.especies.get(chave)||0; const novo = Math.max(0, atual-mmol);
+        if (novo < 1e-12) sys.especies.delete(chave); else sys.especies.set(chave, novo);
+      }
+
+      function dispararAlerta(titulo, msg) {
+        if (window.pararAdicao) window.pararAdicao();
+        window.setModoTermico('ambiente');
+        document.getElementById('alertTitle').innerText = titulo;
+        document.getElementById('alertMsg').innerText = msg;
+        document.getElementById('alertOverlay').style.display = 'flex';
+        log(`🚨 ALERTA: ${titulo} - ${msg}`, 'log-danger');
+      }
+
+      function resetarLaboratorio() {
+        if (timerAdd) { clearInterval(timerAdd); timerAdd = null; }
+        document.getElementById('btnStartAdd').innerText = '▶ Adicionar';
+        window.setModoTermico('ambiente');
+        document.getElementById('tempAlvo').value = 25;
+        sys.especies.clear(); sys.vol = 0; sys.temp = 25; sys.pressao = 1;
+        sys.shattered = false; sys.fenolftaleina = false;
+        phDataPoints = [];
+        document.getElementById('alertOverlay').style.display = 'none';
+        document.getElementById('qtdInput').value = '10';
+        document.getElementById('bubbleOverlay').style.opacity = '0';
+        document.getElementById('pressWarn').style.display = 'none';
+        document.getElementById('freezeOverlay').style.opacity = '0';
+        atualizarUI(); window.limparCurvaPH();
+        log('Sistema resetado.', 'log-info');
+      }
+
+      function trocarVidraria() {
+        if (sys.vol > 0 || sys.especies.size > 0) {
+          if (!confirm('Trocar vidraria descarta o conteúdo. Continuar?')) return;
+        }
+        const v = document.getElementById('vidrariaSelect').value;
+        const vessel = document.getElementById('vessel');
+        vessel.className = 'glass-vessel'; 
+        sys.isClosed = false;
+        if (v === 'tubo_20') { sys.maxVol=20; vessel.classList.add('vessel-beaker'); vessel.style.width='40px'; vessel.style.height='140px'; }
+        else if (v === 'becker_250') { sys.maxVol=250; vessel.classList.add('vessel-beaker'); vessel.style.width='150px'; vessel.style.height='180px'; }
+        else if (v === 'becker_1000') { sys.maxVol=1000; vessel.classList.add('vessel-beaker'); vessel.style.width='220px'; vessel.style.height='240px'; }
+        else if (v === 'erlen_250') { sys.maxVol=250; vessel.classList.add('vessel-flask'); vessel.style.width='150px'; vessel.style.height='180px'; sys.isClosed=true; }
+        document.getElementById('glasswareZone').classList.toggle('closed-system', sys.isClosed);
+        resetarLaboratorio();
+        log(`Vidraria: ${v.replace(/_/g,' ')} (${sys.maxVol} mL)`, 'log-info');
+      }
+
+      function getSelectedReagent() {
+        const sel = document.querySelector('input[name="reagenteSel"]:checked');
+        return sel ? sel.value : null;
+      }
+
+      function iniciarAdicao() {
+        if (sys.shattered) return;
+        const reag = getSelectedReagent();
+        if (!reag) { log('Selecione um reagente.', 'log-warn'); return; }
+        let raw = parseFloat(document.getElementById('qtdInput').value);
+        if (isNaN(raw) || raw <= 0) return;
+        qtdRestante = raw;
+        const modo = document.getElementById('modoAdd').value;
+        if (modo === 'tudo') {
+          processarCarga(reag, qtdRestante);
+          log(`Adicionado ${qtdRestante.toFixed(1)} de ${reag}.`);
+        } else {
+          incrAdd = (modo === 'jato') ? 10 : 1;
+          document.getElementById('btnStartAdd').innerText = '⚡ Adicionando...';
+          if (timerAdd) clearInterval(timerAdd);
+          timerAdd = setInterval(() => {
+            if (qtdRestante <= 0 || sys.shattered) { pararAdicao(); return; }
+            let add = Math.min(incrAdd, qtdRestante);
+            qtdRestante -= add;
+            processarCarga(reag, add);
+          }, 280);
+        }
+      }
+
+      function pararAdicao() {
+        if (timerAdd) { clearInterval(timerAdd); timerAdd = null; }
+        document.getElementById('btnStartAdd').innerText = '▶ Adicionar';
+      }
+
+      function processarCarga(reag, qtd) {
+        if (qtd <= 0 || sys.shattered) return;
+        let mmol = 0;
+        if (reag.endsWith('_l')) {
+          adicionarEspecie(reag, qtd * 10); sys.vol += qtd;
+        } else if (reag.endsWith('_aq')) {
+          const conc = CONC_AQ[reag] || 1;
+          mmol = conc * qtd;
+          adicionarEspecie('H2O_l', qtd * 10); sys.vol += qtd;
+          const dissocMap = {
+            'HCl_aq':[['H+',1],['Cl-',1]], 'H2SO4_aq':[['H+',2],['SO4_2-',1]],
+            'HNO3_aq':[['H+',1],['NO3-',1]], 'HClO4_aq':[['H+',1],['ClO4-',1]],
+            'H3PO4_aq':[['H+',3],['PO4_3-',1]], 'AcidoAcetico_aq':[['H+',0.1],['CH3COO-',0.1]],
+            'NaOH_aq':[['Na+',1],['OH-',1]], 'NH3_aq':[['NH3',1],['OH-',0.1]],
+            'NaClO_aq':[['Na+',1],['ClO-',1]], 'KI_aq':[['K+',1],['I-',1]],
+            'NH42S_aq':[['NH4+',2],['S_2-',1]], 'Na2CO3_aq':[['Na+',2],['CO3_2-',1]],
+            'PbNO3_aq':[['Pb2+',1],['NO3-',2]], 'AgNO3_aq':[['Ag+',1],['NO3-',1]],
+            'CdNO3_aq':[['Cd2+',1],['NO3-',2]], 'CuSO4_aq':[['Cu2+',1],['SO4_2-',1]],
+            'FeCl3_aq':[['Fe3+',1],['Cl-',3]], 'ZnSO4_aq':[['Zn2+',1],['SO4_2-',1]],
+            'NiCl2_aq':[['Ni2+',1],['Cl-',2]], 'SbCl3_aq':[['Sb3+',1],['Cl-',3]],
+            'CaCl2_aq':[['Ca2+',1],['Cl-',2]], 'BaCl2_aq':[['Ba2+',1],['Cl-',2]],
+            'H2O2_aq':[['H2O2',1]], 'NaHCO3_aq':[['Na+',1],['HCO3-',1]],
+            'K2CO3_aq':[['K+',2],['CO3_2-',1]], 'KOH_aq':[['K+',1],['OH-',1]],
+            'LiOH_aq':[['Li+',1],['OH-',1]], 'CaOH2_aq':[['Ca2+',1],['OH-',2]]
+          };
+          if (dissocMap[reag]) dissocMap[reag].forEach(([sp, f]) => adicionarEspecie(sp, mmol*f));
+        } else if (reag.endsWith('_s')) {
+          let mm = MM[reag.replace('_s','')] || 100;
+          mmol = (qtd * 1000) / mm;
+          adicionarEspecie(reag, mmol);
+        } else if (reag === 'fenolftaleina') { sys.fenolftaleina = true; log('Indicador fenolftaleína adicionado.'); }
+        if (sys.vol > sys.maxVol) { dispararAlerta('Transbordamento!', 'Volume excedeu a capacidade.'); sys.vol = sys.maxVol; }
+        atualizarEquilibrio(); atualizarEstadoFisico(); atualizarUI(); registrarPontoPH();
+      }
+
+      function atualizarEquilibrio() {
+        const volL = sys.vol / 1000;
+        if (volL > 0 && qtd('H2O_l') > 0) {
+          let s = qtd('NaCl_s'); if (s>0) { removerEspecie('NaCl_s',s); adicionarEspecie('Na+',s); adicionarEspecie('Cl-',s); }
+          s = qtd('CuSO4_s'); if (s>0) { removerEspecie('CuSO4_s',s); adicionarEspecie('Cu2+',s); adicionarEspecie('SO4_2-',s); }
+          s = qtd('NaHCO3_s'); if (s>0) { removerEspecie('NaHCO3_s',s); adicionarEspecie('Na+',s); adicionarEspecie('HCO3-',s); }
+        }
+        const h = qtd('H+'), oh = qtd('OH-');
+        if (h>0 && oh>0) { const r = Math.min(h,oh); removerEspecie('H+',r); removerEspecie('OH-',r); adicionarEspecie('H2O_l',r); sys.temp += r*0.05; }
+        const hNow = qtd('H+');
+        if (hNow>0) {
+          const metais = ['Zn_s','Mg_s','Al_s','Na_s','Li_s','K_s','Ca_s','Fe_s','Ni_s','Cu_s','Sn_s','Pb_s'];
+          for (let m of metais) {
+            let qm = qtd(m); if (qm <= 0) continue;
+            let valencia = 1; 
+            if (m==='Mg_s'||m==='Ca_s'||m==='Zn_s'||m==='Fe_s'||m==='Ni_s'||m==='Cu_s'||m==='Sn_s'||m==='Pb_s') valencia=2;
+            else if (m==='Al_s'||m==='Fe_s') valencia=3;
+            let ion = m.replace('_s','') + (valencia>1 ? valencia+'+' : '+');
+            if (m==='Na_s') ion='Na+'; else if (m==='Li_s') ion='Li+'; else if (m==='K_s') ion='K+';
+            else if (m==='Ca_s') ion='Ca2+'; else if (m==='Fe_s') ion='Fe2+'; else if (m==='Ni_s') ion='Ni2+';
+            else if (m==='Cu_s') ion='Cu2+'; else if (m==='Sn_s') ion='Sn2+'; else if (m==='Pb_s') ion='Pb2+';
+            if (hNow >= valencia) {
+              let r = Math.min(qm, hNow/valencia);
+              removerEspecie(m, r); removerEspecie('H+', valencia*r);
+              adicionarEspecie(ion, r); adicionarEspecie('H2_g', r*(valencia===2?1:valencia===3?1.5:0.5));
+              sys.temp += r * (m==='Na_s'?5: m==='Li_s'?4.5: m==='K_s'?5.5: m==='Ca_s'?3: 2);
+            }
+          }
+          const co3 = qtd('CO3_2-'); if (co3>0 && hNow>=2) { const r=Math.min(co3,hNow/2); removerEspecie('CO3_2-',r); removerEspecie('H+',2*r); adicionarEspecie('H2O_l',r); adicionarEspecie('CO2_g',r); }
+          const caco3 = qtd('CaCO3_s'); if (caco3>0 && hNow>=2) { const r=Math.min(caco3,hNow/2); removerEspecie('CaCO3_s',r); removerEspecie('H+',2*r); adicionarEspecie('Ca2+',r); adicionarEspecie('H2O_l',r); adicionarEspecie('CO2_g',r); }
+          const clo=qtd('ClO-'), cl=qtd('Cl-'); if(clo>0 && cl>0 && hNow>=2){ const r=Math.min(clo,cl,hNow/2); removerEspecie('ClO-',r); removerEspecie('Cl-',r); removerEspecie('H+',2*r); adicionarEspecie('H2O_l',r); adicionarEspecie('Cl2_g',r); log('⚠ Gás cloro (Cl₂) liberado!','log-danger'); }
+        }
+        const alcalinos = ['Na_s','Li_s','K_s'];
+        for (let m of alcalinos) {
+          let qm = qtd(m); let agua = qtd('H2O_l');
+          if (qm>0 && agua>0) {
+            let ion = m==='Na_s'?'Na+': m==='Li_s'?'Li+':'K+';
+            let r = Math.min(qm, agua);
+            removerEspecie(m, r); removerEspecie('H2O_l', r);
+            adicionarEspecie(ion, r); adicionarEspecie('OH-', r); adicionarEspecie('H2_g', r/2);
+            sys.temp += r * (m==='K_s'?6: m==='Li_s'?4.8:5);
+            if (r>15) dispararAlerta('Explosão!', `Reação violenta de ${m.replace('_s','')} com água!`);
+          }
+        }
+        let ca = qtd('Ca_s'); let agua2 = qtd('H2O_l');
+        if (ca>0 && agua2>0) {
+          let r = Math.min(ca, agua2);
+          removerEspecie('Ca_s', r); removerEspecie('H2O_l', r);
+          adicionarEspecie('Ca2+', r); adicionarEspecie('OH-', 2*r); adicionarEspecie('H2_g', r);
+          sys.temp += r*3;
+        }
+        const h2o2=qtd('H2O2'); if(h2o2>0 && (sys.temp>50 || qtd('Fe3+')>0 || qtd('Pb2+')>0)){ const r=Math.min(h2o2,3); removerEspecie('H2O2',r); adicionarEspecie('H2O_l',r); adicionarEspecie('O2_g',r/2); }
+        PRECIP_TABLE.forEach(p => {
+          let cq=qtd(p.cat), aq=qtd(p.an); if(cq>0 && aq>0){ let fc=cq/p.cC, fa=aq/p.cA; let m=Math.min(fc,fa); removerEspecie(p.cat, m*p.cC); removerEspecie(p.an, m*p.cA); adicionarEspecie(p.prod, m); }
+        });
+      }
+
+      function atualizarEstadoFisico() {
+        if (sys.shattered) return;
+        let congelando = false;
+        if (!sys.isClosed) {
+          for (const [solv, pe] of Object.entries(BP)) {
+            let q = qtd(solv);
+            if (q > 0 && sys.temp >= pe) {
+              let ex = sys.temp - pe;
+              let tx = 0.5 + ex * 0.05;
+              let ev = Math.min(q, tx);
+              removerEspecie(solv, ev);
+              sys.vol -= ev * 0.018;
+              if (ev > 0.05) log(`${solv.replace('_l','')} evaporando a ${sys.temp.toFixed(1)}°C.`);
+            }
+          }
+        }
+        for (const [solv, pf] of Object.entries(FP)) {
+          let q = qtd(solv);
+          if (q > 0 && sys.temp <= pf) {
+            let solidName = solv.replace('_l', '_s');
+            let freeze = Math.min(q, 0.8);
+            removerEspecie(solv, freeze);
+            adicionarEspecie(solidName, freeze);
+            sys.vol -= freeze * 0.018;
+            congelando = true;
+            if (freeze > 0.05) log(`${solv.replace('_l','')} congelou a ${sys.temp.toFixed(1)}°C.`);
+          }
+        }
+        document.getElementById('freezeOverlay').style.opacity = congelando ? '0.75' : '0';
+        if (sys.vol < 0.05) sys.vol = 0;
+        if (sys.vol > sys.maxVol) sys.vol = sys.maxVol;
+        if (sys.temp > 550) { dispararAlerta('Choque Térmico!','Vidraria derreteu a 550°C!'); sys.shattered=true; return; }
+        if (sys.isClosed) {
+          const nGas = (qtd('H2_g')+qtd('CO2_g')+qtd('Cl2_g')+qtd('O2_g'))/1000;
+          const volLivre = (sys.maxVol-sys.vol)/1000;
+          sys.pressao = (volLivre>0 && nGas>0) ? 1+(nGas*0.082*(sys.temp+273.15))/volLivre : 1;
+          const warnEl = document.getElementById('pressWarn');
+          if (sys.pressao > 5.5) { warnEl.style.display='inline'; warnEl.className='press-critical'; warnEl.innerText='⚠ CRÍTICO'; }
+          else if (sys.pressao > 3.0) { warnEl.style.display='inline'; warnEl.className='press-warning'; warnEl.innerText='⚠ Alta pressão'; }
+          else if (sys.pressao > 1.5) { warnEl.style.display='inline'; warnEl.className='press-warning'; warnEl.innerText='⚠ Pressão elevada'; }
+          else { warnEl.style.display='none'; }
+          if (sys.pressao > 6.0) { dispararAlerta('Explosão por Pressão!','Acúmulo de gás excedeu 6 atm!'); sys.shattered=true; }
+        } else {
+          sys.pressao=1; document.getElementById('pressWarn').style.display='none';
+          const nGas = qtd('H2_g')+qtd('CO2_g')+qtd('O2_g');
+          if (nGas>50 && sys.vol>sys.maxVol*0.8) { dispararAlerta('Erupção!','Geração violenta de gás!'); sys.shattered=true; }
+        }
+      }
+
+      function calcularpH() {
+        const volL = sys.vol/1000; if (volL<=0) return 7;
+        const h=qtd('H+'), oh=qtd('OH-');
+        if (h>1e-12) { let conc=h/volL; return Math.max(0,Math.min(14,-Math.log10(Math.max(conc,1e-14)))); }
+        if (oh>1e-12) { let conc=oh/volL; return Math.max(0,Math.min(14,14+Math.log10(Math.max(conc,1e-14)))); }
+        return 7;
+      }
+
+      function registrarPontoPH() {
+        const ph = calcularpH(); const volPct = sys.maxVol>0 ? (sys.vol/sys.maxVol)*100 : 0;
+        phDataPoints.push({vol:volPct, ph:ph}); if (phDataPoints.length>200) phDataPoints.shift();
+        desenharCurvaPH();
+      }
+
+      function desenharCurvaPH() {
+        const w=phCanvas.width, h=phCanvas.height; phCtx.clearRect(0,0,w,h);
+        phCtx.fillStyle='#020617'; phCtx.fillRect(0,0,w,h);
+        phCtx.strokeStyle='#1e3a5f'; phCtx.lineWidth=1;
+        for (let i=0; i<=14; i+=2) { let y=h-(i/14)*h; phCtx.beginPath(); phCtx.moveTo(0,y); phCtx.lineTo(w,y); phCtx.stroke(); phCtx.fillStyle='#546e7a'; phCtx.font='9px Fira Code'; phCtx.fillText(i,2,y-2); }
+        if (phDataPoints.length<2) return;
+        phCtx.strokeStyle='#00ff88'; phCtx.lineWidth=2; phCtx.shadowColor='rgba(0,255,136,0.5)'; phCtx.shadowBlur=6;
+        phCtx.beginPath();
+        for (let i=0; i<phDataPoints.length; i++) {
+          let x=(phDataPoints[i].vol/100)*w, y=h-(phDataPoints[i].ph/14)*h;
+          if (i===0) phCtx.moveTo(x,y); else phCtx.lineTo(x,y);
+        }
+        phCtx.stroke(); phCtx.shadowBlur=0;
+      }
+
+      function limparCurvaPH() { phDataPoints=[]; desenharCurvaPH(); log('Curva de pH limpa.'); }
+
+      function atualizarUI() {
+        document.getElementById('volDisplay').innerText = `${sys.vol.toFixed(1)} / ${sys.maxVol} mL`;
+        const liq = document.getElementById('liquidLayer'); liq.style.height = Math.min((sys.vol/sys.maxVol)*100,100)+'%';
+        let corLiq = 'rgba(255,255,255,0.06)';
+        if (sys.vol>0) {
+          if (qtd('Cu2+')>0) corLiq='rgba(0,200,255,0.55)'; else if (qtd('Ni2+')>0) corLiq='rgba(100,220,140,0.55)';
+          else if (qtd('Fe3+')>0||qtd('Fe2+')>0) corLiq='rgba(255,160,100,0.5)'; else if (qtd('Pb2+')>0||qtd('Ag+')>0) corLiq='rgba(220,220,240,0.25)';
+          else if (qtd('Cd2+')>0) corLiq='rgba(255,230,150,0.4)';
+          else if (qtd('I2_aq')>0) corLiq='rgba(180,120,180,0.4)';
+          if (sys.fenolftaleina) { const ph=calcularpH(); if(ph>10) corLiq='#e91e63'; else if(ph>8.5) corLiq='#f06292'; }
+        }
+        liq.style.backgroundColor = corLiq;
+        let pptH=0, pptCor='transparent', best={q:0,c:'transparent'};
+        PRECIP_TABLE.forEach(p=>{ let q=qtd(p.prod); if(q>0.05){ pptH+=4; if(q>best.q) best={q:q, c:p.cor}; } });
+        if(qtd('Al_s')>0||qtd('Zn_s')>0||qtd('Mg_s')>0||qtd('Ca_s')>0||qtd('S_s')>0||qtd('I2_s')>0||qtd('Fe_s')>0||qtd('Ni_s')>0||qtd('Cu_s')>0||qtd('Sn_s')>0||qtd('Pb_s')>0){ pptH+=4; if(best.q===0) best.c='#b0bec5'; }
+        document.getElementById('precipLayer').style.height = Math.min(pptH,45)+'%';
+        document.getElementById('precipLayer').style.backgroundColor = best.c;
+        const gasEl=document.getElementById('gasHalo');
+        if(qtd('Cl2_g')>0){ gasEl.style.opacity='0.85'; gasEl.style.background='radial-gradient(circle, rgba(180,220,80,0.5) 0%, transparent 80%)'; }
+        else if(qtd('H2_g')>0||qtd('CO2_g')>0||qtd('O2_g')>0){ gasEl.style.opacity='0.5'; gasEl.style.background='radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 70%)'; }
+        else { gasEl.style.opacity='0'; }
+        document.getElementById('bubbleOverlay').style.opacity = (sys.temp>60 || qtd('H2_g')>5 || qtd('CO2_g')>5) ? '1' : '0';
+        document.getElementById('hudTemp').innerText = sys.temp.toFixed(1)+' °C';
+        document.getElementById('hudPress').innerText = sys.pressao.toFixed(2)+' atm';
+        const ph = calcularpH(); document.getElementById('hudPH').innerText = ph.toFixed(2);
+        const tPct = ((sys.temp+10)/560)*100; document.getElementById('thermoFill').style.height = Math.min(100,Math.max(0,tPct))+'%';
+        let tCol = sys.temp>50 ? '#ff1744' : sys.temp<=0 ? '#4fc3f7' : '#00ff88';
+        document.getElementById('thermoFill').style.backgroundColor = tCol;
+        document.getElementById('thermoBulb').style.backgroundColor = tCol;
+        let tagsHtml = '';
+        for (let [esp, q] of sys.especies) {
+          if (q<0.05) continue;
+          let cls='tag-aq'; if(esp.endsWith('_s')) cls='tag-s'; else if(esp.endsWith('_g')) cls='tag-g'; else if(esp.endsWith('_l')) cls='tag-l';
+          let nome = esp.replace(/_s|_g|_l|_aq/g,'').replace(/_2-/g,'²⁻').replace(/3\+/g,'³⁺').replace(/2\+/g,'²⁺').replace(/\+/g,'⁺').replace(/-/g,'⁻');
+          tagsHtml += `<span class="tag ${cls}" title="${q.toFixed(2)} mmol">${nome} ${q.toFixed(1)}</span>`;
+        }
+        document.getElementById('speciesTags').innerHTML = tagsHtml || '<span style="color:#546e7a;">vazio</span>';
+      }
+
+      function setModoTermico(modo) {
+        if (sys.modoTermico === modo) modo = 'ambiente';
+        sys.modoTermico = modo;
+        document.getElementById('btnHeat').classList.toggle('active-btn', modo==='aquecendo');
+        document.getElementById('btnThermostat').classList.toggle('active-btn', modo==='termostato');
+        document.getElementById('btnCool').classList.toggle('active-btn', modo==='resfriando');
+        document.getElementById('flameFX').style.opacity = modo==='aquecendo' ? '1' : '0';
+        document.getElementById('iceFX').style.opacity = modo==='resfriando' ? '1' : '0';
+      }
+
+      function ajustarPotenciaChama(val) {
+        document.documentElement.style.setProperty('--flame-scale', 0.5 + val*0.07);
+      }
+
+      function loopTermico() {
+        if (sys.shattered) return;
+        const pot = parseInt(document.getElementById('heatSlider').value)||5;
+        const incr = 0.4 + Math.pow(pot,1.7)*0.18;
+        let alterou = false;
+        if (sys.modoTermico==='aquecendo') { sys.temp+=incr; alterou=true; }
+        else if (sys.modoTermico==='resfriando') { sys.temp-=1.8; if(sys.temp<-120) sys.temp=-120; alterou=true; }
+        else if (sys.modoTermico==='termostato') { const alvo=parseFloat(document.getElementById('tempAlvo').value)||25; if(sys.temp<alvo-0.3){ sys.temp+=incr*0.4; alterou=true; } else if(sys.temp>alvo+0.3){ sys.temp-=0.8; alterou=true; } }
+        else if (sys.modoTermico==='ambiente') { if(sys.temp>25.3){ sys.temp-=0.4; alterou=true; } else if(sys.temp<24.7){ sys.temp+=0.4; alterou=true; } else sys.temp=25; }
+        if (alterou) { atualizarEquilibrio(); atualizarEstadoFisico(); atualizarUI(); registrarPontoPH(); }
+      }
+
+      function construirCatalogo() {
+        const grupos = [
+          ['💧 Solventes Polares', [
+            ['H2O_l','Água Destilada (H₂O)'],
+            ['Etanol_l','Etanol Absoluto (C₂H₆O)'],
+            ['Acetona_l','Acetona Pura (C₃H₆O)'],
+            ['Metanol_l','Metanol (CH₃OH)']
+          ]],
+          ['🛢️ Solventes Apolares', [
+            ['Hexano_l','Hexano (C₆H₁₄)'],
+            ['Benzeno_l','Benzeno (C₆H₆)'],
+            ['Tolueno_l','Tolueno (C₇H₈)'],
+            ['Cloroformio_l','Clorofórmio (CHCl₃)']
+          ]],
+          ['⚠️ Alto Risco', [
+            ['Na_s','Sódio Metálico (Na)'],
+            ['Li_s','Lítio Metálico (Li)'],
+            ['K_s','Potássio Metálico (K)'],
+            ['H2O2_aq','Peróxido de Hidrogênio (H₂O₂)']
+          ]],
+          ['⚙️ Metais Sólidos', [
+            ['Zn_s','Zinco (Zn)'],
+            ['Mg_s','Magnésio (Mg)'],
+            ['Al_s','Alumínio (Al)'],
+            ['Ca_s','Cálcio (Ca)'],
+            ['Fe_s','Ferro (Fe)'],
+            ['Ni_s','Níquel (Ni)'],
+            ['Cu_s','Cobre (Cu)'],
+            ['Sn_s','Estanho (Sn)'],
+            ['Pb_s','Chumbo (Pb)']
+          ]],
+          ['🧪 Metais em Solução', [
+            ['PbNO3_aq','Nitrato de Chumbo (Pb(NO₃)₂)'],
+            ['AgNO3_aq','Nitrato de Prata (AgNO₃)'],
+            ['CdNO3_aq','Nitrato de Cádmio (Cd(NO₃)₂)'],
+            ['CuSO4_aq','Sulfato de Cobre (CuSO₄)'],
+            ['FeCl3_aq','Cloreto de Ferro III (FeCl₃)'],
+            ['ZnSO4_aq','Sulfato de Zinco (ZnSO₄)'],
+            ['NiCl2_aq','Cloreto de Níquel (NiCl₂)'],
+            ['SbCl3_aq','Cloreto de Antimônio (SbCl₃)'],
+            ['CaCl2_aq','Cloreto de Cálcio (CaCl₂)'],
+            ['BaCl2_aq','Cloreto de Bário (BaCl₂)']
+          ]],
+          ['🔥 Ácidos', [
+            ['HCl_aq','Ácido Clorídrico (HCl)'],
+            ['H2SO4_aq','Ácido Sulfúrico (H₂SO₄)'],
+            ['HNO3_aq','Ácido Nítrico (HNO₃)'],
+            ['HClO4_aq','Ácido Perclórico (HClO₄)'],
+            ['H3PO4_aq','Ácido Fosfórico (H₃PO₄)'],
+            ['AcidoAcetico_aq','Ácido Acético (CH₃COOH)']
+          ]],
+          ['🧼 Bases', [
+            ['NaOH_aq','Hidróxido de Sódio (NaOH)'],
+            ['KOH_aq','Hidróxido de Potássio (KOH)'],
+            ['LiOH_aq','Hidróxido de Lítio (LiOH)'],
+            ['NH3_aq','Amônia (NH₃)'],
+            ['Na2CO3_aq','Carbonato de Sódio (Na₂CO₃)'],
+            ['NaHCO3_aq','Bicarbonato de Sódio (NaHCO₃)'],
+            ['K2CO3_aq','Carbonato de Potássio (K₂CO₃)'],
+            ['CaOH2_aq','Água de Cal (Ca(OH)₂)'],
+            ['NaClO_aq','Água Sanitária (NaClO)']
+          ]],
+          ['🧂 Sais e Outros', [
+            ['NaCl_s','Cloreto de Sódio (NaCl)'],
+            ['CuSO4_s','Sulfato de Cobre Anidro (CuSO₄)'],
+            ['CaCO3_s','Carbonato de Cálcio (CaCO₃)'],
+            ['NaHCO3_s','Bicarbonato de Sódio (NaHCO₃)'],
+            ['KI_aq','Iodeto de Potássio (KI)'],
+            ['NH42S_aq','Sulfeto de Amônio ((NH₄)₂S)'],
+            ['I2_s','Iodo (I₂)'],
+            ['S_s','Enxofre (S)'],
+            ['P_s','Fósforo Vermelho (P)']
+          ]],
+          ['🔬 Indicador', [
+            ['fenolftaleina','Fenolftaleína (C₂₀H₁₄O₄)']
+          ]]
+        ];
+        let html = '';
+        grupos.forEach(([titulo, itens], idx) => {
+          html += `<details ${idx===0?'open':''}><summary>${titulo}</summary><div class="reagent-list">`;
+          itens.forEach(([val, label], i) => { html += `<label><input type="radio" name="reagenteSel" value="${val}" ${idx===0&&i===0?'checked':''}> ${label}</label>`; });
+          html += '</div></details>';
+        });
+        document.getElementById('catalogContainer').innerHTML = html;
+      }
+
+      window.abrirManual = abrirManual;
+      window.fecharManual = fecharManual;
+      window.resetarLaboratorio = resetarLaboratorio;
+      window.trocarVidraria = trocarVidraria;
+      window.iniciarAdicao = iniciarAdicao;
+      window.pararAdicao = pararAdicao;
+      window.setModoTermico = setModoTermico;
+      window.ajustarPotenciaChama = ajustarPotenciaChama;
+      window.limparCurvaPH = limparCurvaPH;
+      window.limparRegistro = limparRegistro;
+
+      construirCatalogo();
+      resetarLaboratorio();
+      timerLoop = setInterval(loopTermico, 200);
+      log('🚀 LAIFT Engine Uninassau. DPF :)', 'log-info');
+    })();
+  </script>
+</body>
+</html>
