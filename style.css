@@ -238,13 +238,68 @@ canvas { width: 100%; height: 140px; display: block; }
 /* Caixa de Missão */
 .mission-box { background: rgba(0, 255, 136, 0.1); border: 1px solid var(--neon-green); padding: 8px; border-radius: 8px; margin-top: 8px; }
 
-/* Modo Foco (Escurece o fundo e dá zoom na vidraria) */
-.focus-active {
-  position: fixed !important; top: 50% !important; left: 50% !important;
-  transform: translate(-50%, -50%) scale(1.6) !important; z-index: 999;
-  box-shadow: 0 0 0 2000px rgba(0,0,0,0.85); pointer-events: auto;
+/* =========================================================
+   MODO FOCO (TELA CHEIA E ISOLAMENTO)
+========================================================= */
+.visual-stage.focus-active {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+  background: rgba(1, 5, 16, 0.98) !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transform: none !important;
+  border-radius: 0;
 }
 
+/* Esconde a bancada, HUD e painéis quando em foco */
+.visual-stage.focus-active .hud-overlay,
+.visual-stage.focus-active .thermo-column,
+.visual-stage.focus-active .bench,
+.visual-stage.focus-active .tripod,
+.visual-stage.focus-active .signature {
+  display: none !important;
+}
+
+/* Aumenta apenas a zona da vidraria e remove as restrições de fundo */
+.visual-stage.focus-active .glassware-zone {
+  position: relative !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: translateX(0) scale(2.5) !important; /* Zoom de 2.5x */
+  cursor: default; /* Remove o cursor de clique quando já está focado */
+}
+
+/* Botão de Fechar Foco */
+.btn-close-focus {
+  display: none;
+  position: absolute;
+  top: 30px;
+  right: 40px;
+  background: var(--alert-red);
+  color: white;
+  border: 2px solid #b71c1c;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  z-index: 10000;
+  font-size: 1rem;
+  transition: 0.2s;
+  box-shadow: 0 4px 15px rgba(255, 23, 68, 0.4);
+}
+.btn-close-focus:hover {
+  background: #b71c1c;
+  transform: scale(1.05);
+}
+.visual-stage.focus-active .btn-close-focus {
+  display: block; /* O botão só aparece quando o foco está ativo */
+}
 /* Agitador Magnético */
 .agitador {
   position: absolute; bottom: 5px; left: 50%; width: 24px; height: 6px;
