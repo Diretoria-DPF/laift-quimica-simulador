@@ -81,12 +81,84 @@
     logEl.prepend(entry); if (logEl.children.length > 70) logEl.removeChild(logEl.lastChild);
   }
   
+  function limparRegistro() {
+    logEl.innerHTML = '<span style="color:#546e7a;">[Sistema] Registro limpo.</span>';
+  }
+  
   function qtd(chave) { return sys.especies.get(chave) || 0; }
   function adicionarEspecie(chave, mmol) { if (mmol <= 0) return; sys.especies.set(chave, (sys.especies.get(chave)||0)+mmol); }
   function removerEspecie(chave, mmol) { const atual = sys.especies.get(chave)||0; const novo = Math.max(0, atual-mmol); if (novo < 1e-12) sys.especies.delete(chave); else sys.especies.set(chave, novo); }
 
   // ==========================================
-  // 5. INCIDENTES, RESET E TROCA DE VIDRARIA
+  // 5. SISTEMA AVANÇADO DE MISSÕES
+  // ==========================================
+  const missoes = [
+    { titulo: "Missão 1: Neutralização", desc: "Atinge um pH entre 7.0 e 7.5. (Dica: mistura HCl e NaOH)", check: () => calcularpH() >= 7.0 && calcularpH() <= 7.5 && sys.vol >= 20 },
+    { titulo: "Missão 2: Chuva Dourada", desc: "Forma um precipitado amarelo intenso (PbI₂).", check: () => qtd('PbI2_s') > 0.1 },
+    { titulo: "Missão 3: Libertação de Gás H₂", desc: "Faz um metal (como Zinco ou Magnésio) reagir com ácido para gerar gás Hidrogénio.", check: () => qtd('H2_g') > 1 },
+    { titulo: "Missão 4: Ponto de Ebulição", desc: "Aquece a água no béquer aberto até que ela comece a evaporar.", check: () => sys.temp >= 100 && qtd('H2O_l') > 0 },
+    { titulo: "Missão 5: Hidróxido Azul", desc: "Cria um precipitado azul claro de Hidróxido de Cobre (Cu(OH)₂).", check: () => qtd('Cu(OH)2_s') > 0.1 }
+  ];
+  let missaoAtual = 0;
+
+  function atualizarUI_Missao() {
+    if (missaoAtual >= missoes.length) {
+      document.getElementById('missionTitle').innerText = "🎉 Mestre Laboratorial!";
+      document.getElementById('missionDesc').innerText = "Concluíste todas as tarefas propostas com sucesso.";
+      document.getElementById('missionStatus').style.display = 'none';
+      if(document.getElementById('btnNextMission')) document.getElementById('btnNextMission').style.display = 'none';
+      return;
+    }
+    const m = missoes[missaoAtual];
+    document.getElementById('missionTitle').innerText = m.titulo;
+    document.getElementById('missionDesc').innerText = m.desc;
+    document.getElementById('missionStatus').innerText = "Pendente";
+    document.getElementById('missionStatus').style.display = 'inline-block';
+    document.getElementById('missionStatus').style.borderColor = "#ff9800";
+    document.getElementById('missionStatus').style.color = "#ff9800";
+    if(document.getElementById('btnNextMission')) document.getElementById('btnNextMission').style.display = 'none';
+  }
+
+  function verificarMissoes() {
+    if (missaoAtual >= missoes.length) return;
+    if (missoes[missaoAtual].check()) {
+      const badge = document.getElementById('missionStatus');
+      if (badge && badge.innerText !== 'Concluída ✅') {
+        badge.innerText = 'Concluída ✅';
+        badge.style.borderColor = 'var(--neon-green)';
+        badge.style.color = 'var(--neon-green)';
+        if(document.getElementById('btnNextMission')) document.getElementById('btnNextMission').style.display = 'block';
+        tocarSom('sucesso');
+        log('🏆 ' + missoes[missaoAtual].titulo + ' Concluída!', 'log-info');
+      }
+    }
+  }
+
+  // Funções do Livro de Missões exportadas para o HTML
+  window.proximaMissao = function() { 
+    missaoAtual++; 
+    resetarLaboratorio(); 
+    atualizarUI_Missao(); 
+  };
+  
+  window.abrirLivroMissoes = function() {
+    let html = '<ul style="list-style:none; padding:0;">';
+    missoes.forEach((m, i) => {
+      let status = i < missaoAtual ? "✅ Concluída" : i === missaoAtual ? "▶ Em Progresso" : "🔒 Bloqueada";
+      let color = i < missaoAtual ? "var(--neon-green)" : i === missaoAtual ? "#ff9800" : "#546e7a";
+      html += `<li style="color:${color}; margin-bottom:12px; border-bottom:1px dashed #1e3a5f; padding-bottom:8px;"><strong>${m.titulo}</strong> <span style="font-size:0.6rem;">(${status})</span><br><span style="color:#b0bec5; font-size:0.75rem;">${m.desc}</span></li>`;
+    });
+    html += '</ul>';
+    document.getElementById('missionsList').innerHTML = html;
+    document.getElementById('missionsModal').style.display = 'flex';
+  };
+  
+  window.fecharLivroMissoes = function() {
+    document.getElementById('missionsModal').style.display = 'none';
+  };
+
+  // ==========================================
+  // 6. INCIDENTES, RESET E TROCA DE VIDRARIA
   // ==========================================
   function dispararAlerta(titulo, msg) {
     if (window.pararAdicao) window.pararAdicao();
@@ -103,8 +175,7 @@
     document.getElementById('btnStartAdd').innerText = '▶ Adicionar'; window.setModoTermico('ambiente'); document.getElementById('tempAlvo').value = 25;
     sys.especies.clear(); sys.vol = 0; sys.temp = 25; sys.pressao = 1; sys.shattered = false; sys.fenolftaleina = false; historico = []; phDataPoints = [];
     document.getElementById('alertOverlay').style.display = 'none'; document.getElementById('qtdInput').value = '10'; document.getElementById('bubbleOverlay').style.opacity = '0'; document.getElementById('pressWarn').style.display = 'none'; document.getElementById('freezeOverlay').style.opacity = '0';
-    const badge = document.getElementById('missionStatus');
-    if (badge) { badge.innerText = "Pendente"; badge.style.borderColor = "#ff9800"; badge.style.color = "#ff9800"; }
+    atualizarUI_Missao();
     atualizarUI(); window.limparCurvaPH(); log('Sistema resetado.', 'log-info');
   }
 
@@ -121,7 +192,7 @@
   }
 
   // ==========================================
-  // 6. ANIMAÇÕES E INÍCIO DE ADIÇÃO
+  // 7. ANIMAÇÕES E INÍCIO DE ADIÇÃO
   // ==========================================
   function animarDespejo(modo) {
     const zone = document.getElementById('glasswareZone'); const animEl = document.createElement('div');
@@ -158,19 +229,16 @@
   }
 
   // ==========================================
-  // 7. LÓGICA QUÍMICA (MOTOR ORIGINAL)
+  // 8. LÓGICA QUÍMICA
   // ==========================================
   function processarCarga(reag, qtdAdd) {
     if (qtdAdd <= 0 || sys.shattered) return;
     let mmol = 0;
 
     if (reag.endsWith('_l')) {
-      // Líquidos puros
       adicionarEspecie(reag, qtdAdd * 10);
       sys.vol += qtdAdd;
-
     } else if (reag.endsWith('_aq')) {
-      // Soluções aquosas (adiciona água + íons)
       const conc = CONC_AQ[reag] || 1;
       mmol = conc * qtdAdd;
       adicionarEspecie('H2O_l', qtdAdd * 10);
@@ -212,18 +280,15 @@
       }
 
     } else if (reag.endsWith('_s')) {
-      // Sólidos
       let mm = MM[reag.replace('_s', '')] || 100;
       mmol = (qtdAdd * 1000) / mm;
       adicionarEspecie(reag, mmol);
 
     } else if (reag === 'fenolftaleina') {
-      // Indicador
       sys.fenolftaleina = true;
       log('Indicador fenolftaleína adicionado.');
     }
     
-    // Verificação de segurança (Transbordamento)
     if (sys.vol > sys.maxVol) {
       dispararAlerta('Transbordamento!', 'Volume excedeu a capacidade.');
       sys.vol = sys.maxVol;
@@ -232,42 +297,28 @@
     atualizarEquilibrio();
     atualizarEstadoFisico();
     atualizarUI();
-    verificarMissoes();
+    verificarMissoes(); // Verifica se a adição concluiu a missão
     registrarPontoPH();
   }
+
   function atualizarEquilibrio() {
     const volL = sys.vol / 1000;
     
-    // 1. Dissolução de Sais (Dinâmica com Agitador)
+    // Dissolução
     if (volL > 0 && qtd('H2O_l') > 0) {
       let txDissolucao = agitadorAtivo ? 1.0 : 0.2; 
       
       let sNaCl = qtd('NaCl_s'); 
-      if (sNaCl > 0) { 
-        let r = sNaCl * txDissolucao; 
-        removerEspecie('NaCl_s', r); 
-        adicionarEspecie('Na+', r); 
-        adicionarEspecie('Cl-', r); 
-      }
+      if (sNaCl > 0) { let r = sNaCl * txDissolucao; removerEspecie('NaCl_s', r); adicionarEspecie('Na+', r); adicionarEspecie('Cl-', r); }
       
       let sCuSO4 = qtd('CuSO4_s'); 
-      if (sCuSO4 > 0) { 
-        let r = sCuSO4 * txDissolucao; 
-        removerEspecie('CuSO4_s', r); 
-        adicionarEspecie('Cu2+', r); 
-        adicionarEspecie('SO4_2-', r); 
-      }
+      if (sCuSO4 > 0) { let r = sCuSO4 * txDissolucao; removerEspecie('CuSO4_s', r); adicionarEspecie('Cu2+', r); adicionarEspecie('SO4_2-', r); }
       
       let sNaHCO3 = qtd('NaHCO3_s'); 
-      if (sNaHCO3 > 0) { 
-        let r = sNaHCO3 * txDissolucao; 
-        removerEspecie('NaHCO3_s', r); 
-        adicionarEspecie('Na+', r); 
-        adicionarEspecie('HCO3-', r); 
-      }
+      if (sNaHCO3 > 0) { let r = sNaHCO3 * txDissolucao; removerEspecie('NaHCO3_s', r); adicionarEspecie('Na+', r); adicionarEspecie('HCO3-', r); }
     }
     
-    // 2. Neutralização Ácido-Base
+    // Neutralização Ácido-Base
     const h = qtd('H+'), oh = qtd('OH-');
     if (h > 0 && oh > 0) {
       const r = Math.min(h, oh);
@@ -277,7 +328,7 @@
       sys.temp += r * 0.05; // Reação exotérmica
     }
     
-    // 3. Reações de Metais e Carbonatos com Ácido
+    // Reações de Metais e Carbonatos com Ácido
     const hNow = qtd('H+');
     if (hNow > 0) {
       const metais = ['Zn_s','Mg_s','Al_s','Na_s','Li_s','K_s','Ca_s','Fe_s','Ni_s','Cu_s','Sn_s','Pb_s'];
@@ -290,115 +341,63 @@
         else if (['Al_s','Fe_s'].includes(m)) valencia = 3;
 
         let ion = m.replace('_s', '') + (valencia > 1 ? valencia + '+' : '+');
-        if (m === 'Na_s') ion = 'Na+'; 
-        else if (m === 'Li_s') ion = 'Li+'; 
-        else if (m === 'K_s') ion = 'K+'; 
-        else if (m === 'Ca_s') ion = 'Ca2+'; 
-        else if (m === 'Fe_s') ion = 'Fe2+'; 
-        else if (m === 'Ni_s') ion = 'Ni2+'; 
-        else if (m === 'Cu_s') ion = 'Cu2+'; 
-        else if (m === 'Sn_s') ion = 'Sn2+'; 
-        else if (m === 'Pb_s') ion = 'Pb2+';
+        if (m === 'Na_s') ion = 'Na+'; else if (m === 'Li_s') ion = 'Li+'; else if (m === 'K_s') ion = 'K+'; else if (m === 'Ca_s') ion = 'Ca2+'; else if (m === 'Fe_s') ion = 'Fe2+'; else if (m === 'Ni_s') ion = 'Ni2+'; else if (m === 'Cu_s') ion = 'Cu2+'; else if (m === 'Sn_s') ion = 'Sn2+'; else if (m === 'Pb_s') ion = 'Pb2+';
 
         if (hNow >= valencia) {
           let r = Math.min(qm, hNow / valencia);
           if (!agitadorAtivo) r *= 0.5; // Reação mais lenta sem agitação
           
-          removerEspecie(m, r);
-          removerEspecie('H+', valencia * r);
-          adicionarEspecie(ion, r);
-          adicionarEspecie('H2_g', r * (valencia === 2 ? 1 : valencia === 3 ? 1.5 : 0.5));
-          
+          removerEspecie(m, r); removerEspecie('H+', valencia * r); adicionarEspecie(ion, r); adicionarEspecie('H2_g', r * (valencia === 2 ? 1 : valencia === 3 ? 1.5 : 0.5));
           sys.temp += r * (m === 'Na_s' ? 5 : m === 'Li_s' ? 4.5 : m === 'K_s' ? 5.5 : m === 'Ca_s' ? 3 : 2);
         }
       }
 
       // Carbonatos
       const co3 = qtd('CO3_2-');
-      if (co3 > 0 && hNow >= 2) {
-        const r = Math.min(co3, hNow / 2);
-        removerEspecie('CO3_2-', r);
-        removerEspecie('H+', 2 * r);
-        adicionarEspecie('H2O_l', r);
-        adicionarEspecie('CO2_g', r);
-      }
+      if (co3 > 0 && hNow >= 2) { const r = Math.min(co3, hNow / 2); removerEspecie('CO3_2-', r); removerEspecie('H+', 2 * r); adicionarEspecie('H2O_l', r); adicionarEspecie('CO2_g', r); }
 
       const caco3 = qtd('CaCO3_s');
-      if (caco3 > 0 && hNow >= 2) {
-        const r = Math.min(caco3, hNow / 2);
-        removerEspecie('CaCO3_s', r);
-        removerEspecie('H+', 2 * r);
-        adicionarEspecie('Ca2+', r);
-        adicionarEspecie('H2O_l', r);
-        adicionarEspecie('CO2_g', r);
-      }
+      if (caco3 > 0 && hNow >= 2) { const r = Math.min(caco3, hNow / 2); removerEspecie('CaCO3_s', r); removerEspecie('H+', 2 * r); adicionarEspecie('Ca2+', r); adicionarEspecie('H2O_l', r); adicionarEspecie('CO2_g', r); }
 
-      // Gás Cloro Tóxico (Ácido + Água Sanitária)
+      // Gás Cloro Tóxico
       const clo = qtd('ClO-'), cl = qtd('Cl-');
       if (clo > 0 && cl > 0 && hNow >= 2) {
-        const r = Math.min(clo, cl, hNow / 2);
-        removerEspecie('ClO-', r);
-        removerEspecie('Cl-', r);
-        removerEspecie('H+', 2 * r);
-        adicionarEspecie('H2O_l', r);
-        adicionarEspecie('Cl2_g', r);
-        log('⚠ Gás cloro (Cl₂) liberado!', 'log-danger');
+        const r = Math.min(clo, cl, hNow / 2); removerEspecie('ClO-', r); removerEspecie('Cl-', r); removerEspecie('H+', 2 * r); adicionarEspecie('H2O_l', r); adicionarEspecie('Cl2_g', r); log('⚠ Gás cloro (Cl₂) liberado!', 'log-danger');
       }
     }
 
-    // 4. Reações Explosivas (Alcalinos com Água)
+    // Reações Explosivas
     const alcalinos = ['Na_s', 'Li_s', 'K_s'];
     for (let m of alcalinos) {
-      let qm = qtd(m);
-      let agua = qtd('H2O_l');
+      let qm = qtd(m); let agua = qtd('H2O_l');
       if (qm > 0 && agua > 0) {
         let ion = m === 'Na_s' ? 'Na+' : m === 'Li_s' ? 'Li+' : 'K+';
         let r = Math.min(qm, agua);
-        
-        removerEspecie(m, r);
-        removerEspecie('H2O_l', r);
-        adicionarEspecie(ion, r);
-        adicionarEspecie('OH-', r);
-        adicionarEspecie('H2_g', r / 2);
-        
+        removerEspecie(m, r); removerEspecie('H2O_l', r); adicionarEspecie(ion, r); adicionarEspecie('OH-', r); adicionarEspecie('H2_g', r / 2);
         sys.temp += r * (m === 'K_s' ? 6 : m === 'Li_s' ? 4.8 : 5);
         if (r > 15) dispararAlerta('Explosão!', `Reação violenta de ${m.replace('_s', '')} com água!`);
       }
     }
 
     // Cálcio + Água
-    let ca = qtd('Ca_s');
-    let agua2 = qtd('H2O_l');
+    let ca = qtd('Ca_s'); let agua2 = qtd('H2O_l');
     if (ca > 0 && agua2 > 0) {
-      let r = Math.min(ca, agua2);
-      if (!agitadorAtivo) r *= 0.5;
-      removerEspecie('Ca_s', r);
-      removerEspecie('H2O_l', r);
-      adicionarEspecie('Ca2+', r);
-      adicionarEspecie('OH-', 2 * r);
-      adicionarEspecie('H2_g', r);
-      sys.temp += r * 3;
+      let r = Math.min(ca, agua2); if (!agitadorAtivo) r *= 0.5;
+      removerEspecie('Ca_s', r); removerEspecie('H2O_l', r); adicionarEspecie('Ca2+', r); adicionarEspecie('OH-', 2 * r); adicionarEspecie('H2_g', r); sys.temp += r * 3;
     }
 
     // Peróxido de Hidrogênio
     const h2o2 = qtd('H2O2');
     if (h2o2 > 0 && (sys.temp > 50 || qtd('Fe3+') > 0 || qtd('Pb2+') > 0)) {
-      const r = Math.min(h2o2, 3);
-      removerEspecie('H2O2', r);
-      adicionarEspecie('H2O_l', r);
-      adicionarEspecie('O2_g', r / 2);
+      const r = Math.min(h2o2, 3); removerEspecie('H2O2', r); adicionarEspecie('H2O_l', r); adicionarEspecie('O2_g', r / 2);
     }
 
-    // 5. Precipitados (Cores e Sólidos)
+    // Precipitados
     PRECIP_TABLE.forEach(p => {
       let cq = qtd(p.cat), aq = qtd(p.an);
       if (cq > 0 && aq > 0) {
-        let fc = cq / p.cC;
-        let fa = aq / p.cA;
-        let m = Math.min(fc, fa);
-        removerEspecie(p.cat, m * p.cC);
-        removerEspecie(p.an, m * p.cA);
-        adicionarEspecie(p.prod, m);
+        let fc = cq / p.cC; let fa = aq / p.cA; let m = Math.min(fc, fa);
+        removerEspecie(p.cat, m * p.cC); removerEspecie(p.an, m * p.cA); adicionarEspecie(p.prod, m);
       }
     });
   }
@@ -407,88 +406,52 @@
     if (sys.shattered) return;
     let congelando = false;
 
-    // 1. Evaporação (Apenas se o sistema estiver aberto)
     if (!sys.isClosed) {
       for (const [solv, pe] of Object.entries(BP)) {
         let q = qtd(solv);
         if (q > 0 && sys.temp >= pe) {
-          let ex = sys.temp - pe;
-          // Cinética acelerada dependendo da velocidade do tempo
-          let tx = (0.5 + ex * 0.05) * velocidadeTempo; 
+          let ex = sys.temp - pe; let tx = (0.5 + ex * 0.05) * velocidadeTempo; 
           let ev = Math.min(q, tx);
-          
-          removerEspecie(solv, ev);
-          sys.vol -= ev * 0.018; // 0.018 mL por mmol de água aprox.
-          
+          removerEspecie(solv, ev); sys.vol -= ev * 0.018; 
           if (ev > 0.05) log(`${solv.replace('_l', '')} evaporando a ${sys.temp.toFixed(1)}°C.`);
         }
       }
     }
 
-    // 2. Congelamento
     for (const [solv, pf] of Object.entries(FP)) {
       let q = qtd(solv);
       if (q > 0 && sys.temp <= pf) {
-        let solidName = solv.replace('_l', '_s');
-        let freeze = Math.min(q, 0.8 * velocidadeTempo);
-        
-        removerEspecie(solv, freeze);
-        adicionarEspecie(solidName, freeze);
-        sys.vol -= freeze * 0.018;
-        congelando = true;
+        let solidName = solv.replace('_l', '_s'); let freeze = Math.min(q, 0.8 * velocidadeTempo);
+        removerEspecie(solv, freeze); adicionarEspecie(solidName, freeze); sys.vol -= freeze * 0.018; congelando = true;
       }
     }
     
     document.getElementById('freezeOverlay').style.opacity = congelando ? '0.75' : '0';
     
-    // Tratamento de volume
-    if (sys.vol < 0.05) sys.vol = 0;
-    if (sys.vol > sys.maxVol) sys.vol = sys.maxVol;
+    if (sys.vol < 0.05) sys.vol = 0; if (sys.vol > sys.maxVol) sys.vol = sys.maxVol;
+    if (sys.temp > 550) { dispararAlerta('Choque Térmico!', 'A vidraria derreteu a 550°C!'); sys.shattered = true; return; }
     
-    // Derretimento da Vidraria
-    if (sys.temp > 550) {
-      dispararAlerta('Choque Térmico!', 'A vidraria derreteu a 550°C!');
-      sys.shattered = true;
-      return;
-    }
-    
-    // 3. Gestão de Pressão e Gases
     if (sys.isClosed) {
       const nGas = (qtd('H2_g') + qtd('CO2_g') + qtd('Cl2_g') + qtd('O2_g')) / 1000;
       const volLivre = (sys.maxVol - sys.vol) / 1000;
-      
-      // PV = nRT -> P = (nRT)/V
       sys.pressao = (volLivre > 0 && nGas > 0) ? 1 + (nGas * 0.082 * (sys.temp + 273.15)) / volLivre : 1;
       
       const warnEl = document.getElementById('pressWarn');
-      if (sys.pressao > 5.5) {
-        warnEl.style.display = 'inline'; warnEl.className = 'press-critical'; warnEl.innerText = '⚠ CRÍTICO';
-      } else if (sys.pressao > 3.0) {
-        warnEl.style.display = 'inline'; warnEl.className = 'press-warning'; warnEl.innerText = '⚠ Alta pressão';
-      } else if (sys.pressao > 1.5) {
-        warnEl.style.display = 'inline'; warnEl.className = 'press-warning'; warnEl.innerText = '⚠ Pressão elevada';
-      } else {
-        warnEl.style.display = 'none';
-      }
+      if (sys.pressao > 5.5) { warnEl.style.display = 'inline'; warnEl.className = 'press-critical'; warnEl.innerText = '⚠ CRÍTICO'; } 
+      else if (sys.pressao > 3.0) { warnEl.style.display = 'inline'; warnEl.className = 'press-warning'; warnEl.innerText = '⚠ Alta pressão'; } 
+      else if (sys.pressao > 1.5) { warnEl.style.display = 'inline'; warnEl.className = 'press-warning'; warnEl.innerText = '⚠ Pressão elevada'; } 
+      else { warnEl.style.display = 'none'; }
       
-      if (sys.pressao > 6.0) {
-        dispararAlerta('Explosão por Pressão!', 'Acúmulo de gás excedeu 6 atm!');
-        sys.shattered = true;
-      }
+      if (sys.pressao > 6.0) { dispararAlerta('Explosão por Pressão!', 'Acúmulo de gás excedeu 6 atm!'); sys.shattered = true; }
     } else {
-      // Sistema aberto não acumula pressão
-      sys.pressao = 1;
-      document.getElementById('pressWarn').style.display = 'none';
-      
+      sys.pressao = 1; document.getElementById('pressWarn').style.display = 'none';
       const nGas = qtd('H2_g') + qtd('CO2_g') + qtd('O2_g');
-      if (nGas > 50 && sys.vol > sys.maxVol * 0.8) {
-        dispararAlerta('Erupção!', 'Geração violenta de gás causou transbordamento!');
-        sys.shattered = true;
-      }
+      if (nGas > 50 && sys.vol > sys.maxVol * 0.8) { dispararAlerta('Erupção!', 'Geração violenta de gás causou transbordamento!'); sys.shattered = true; }
     }
   }
+
   // ==========================================
-  // 8. INTERFACE VISUAL E MISSÕES
+  // 9. ATUALIZAÇÕES DA INTERFACE E GRÁFICOS
   // ==========================================
   function calcularpH() {
     const volL = sys.vol/1000; if (volL<=0) return 7;
@@ -496,17 +459,6 @@
     if (h>1e-12) { let conc=h/volL; return Math.max(0,Math.min(14,-Math.log10(Math.max(conc,1e-14)))); }
     if (oh>1e-12) { let conc=oh/volL; return Math.max(0,Math.min(14,14+Math.log10(Math.max(conc,1e-14)))); }
     return 7;
-  }
-
-  function verificarMissoes() {
-    const phAtual = calcularpH();
-    if (phAtual >= 7.0 && phAtual <= 7.5 && sys.vol >= 20) {
-      const badge = document.getElementById('missionStatus');
-      if (badge && badge.innerText !== 'Concluída ✅') {
-        badge.innerText = 'Concluída ✅'; badge.style.borderColor = 'var(--neon-green)'; badge.style.color = 'var(--neon-green)';
-        tocarSom('sucesso'); log('🏆 Missão Concluída!', 'log-info');
-      }
-    }
   }
 
   function atualizarUI() {
@@ -550,6 +502,7 @@
     const ph = calcularpH(); const volPct = sys.maxVol>0 ? (sys.vol/sys.maxVol)*100 : 0;
     phDataPoints.push({vol:volPct, ph:ph}); if (phDataPoints.length>200) phDataPoints.shift(); desenharCurvaPH();
   }
+  
   function desenharCurvaPH() {
     const w=phCanvas.width, h=phCanvas.height; phCtx.clearRect(0,0,w,h); phCtx.fillStyle='#020617'; phCtx.fillRect(0,0,w,h); phCtx.strokeStyle='#1e3a5f'; phCtx.lineWidth=1;
     for (let i=0; i<=14; i+=2) { let y=h-(i/14)*h; phCtx.beginPath(); phCtx.moveTo(0,y); phCtx.lineTo(w,y); phCtx.stroke(); phCtx.fillStyle='#546e7a'; phCtx.font='9px Fira Code'; phCtx.fillText(i,2,y-2); }
@@ -558,24 +511,42 @@
     for (let i=0; i<phDataPoints.length; i++) { let x=(phDataPoints[i].vol/100)*w, y=h-(phDataPoints[i].ph/14)*h; if (i===0) phCtx.moveTo(x,y); else phCtx.lineTo(x,y); }
     phCtx.stroke(); phCtx.shadowBlur=0;
   }
+  
   function limparCurvaPH() { phDataPoints=[]; desenharCurvaPH(); log('Curva de pH limpa.'); }
 
   // ==========================================
-  // 9. EVENTOS DE UI, TEMPO E EXPORTAÇÕES GLOBAIS
+  // 10. FUNÇÕES EXPORTADAS (BOTÕES HTML) E LOOP
   // ==========================================
   window.setVelocidade = function(v) {
     velocidadeTempo = v;
-    document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active-btn')); document.getElementById('btnT'+v).classList.add('active-btn');
-    clearInterval(timerLoop); timerLoop = setInterval(loopTermico, 200 / velocidadeTempo);
+    document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active-btn')); 
+    document.getElementById('btnT'+v).classList.add('active-btn');
+    clearInterval(timerLoop); 
+    timerLoop = setInterval(loopTermico, 200 / velocidadeTempo);
   };
   
-  window.toggleAgitador = function() { agitadorAtivo = !agitadorAtivo; document.getElementById('btnAgitador').classList.toggle('active-btn', agitadorAtivo); document.getElementById('agitadorFisico').classList.toggle('ativo', agitadorAtivo); };
-  window.toggleFoco = function() { focoAtivo = !focoAtivo; const stage = document.getElementById('visualStage'); if (focoAtivo) { stage.classList.add('focus-active'); document.body.style.overflow = 'hidden'; } else { stage.classList.remove('focus-active'); document.body.style.overflow = 'auto'; } };
+  window.toggleAgitador = function() { 
+    agitadorAtivo = !agitadorAtivo; 
+    document.getElementById('btnAgitador').classList.toggle('active-btn', agitadorAtivo); 
+    document.getElementById('agitadorFisico').classList.toggle('ativo', agitadorAtivo); 
+  };
+  
+  window.toggleFoco = function() { 
+    focoAtivo = !focoAtivo; 
+    const stage = document.getElementById('visualStage'); 
+    if (focoAtivo) { stage.classList.add('focus-active'); document.body.style.overflow = 'hidden'; } 
+    else { stage.classList.remove('focus-active'); document.body.style.overflow = 'auto'; } 
+  };
+  
   window.setModoTermico = function(modo) {
     if (sys.modoTermico === modo) modo = 'ambiente'; sys.modoTermico = modo;
-    document.getElementById('btnHeat').classList.toggle('active-btn', modo==='aquecendo'); document.getElementById('btnThermostat').classList.toggle('active-btn', modo==='termostato'); document.getElementById('btnCool').classList.toggle('active-btn', modo==='resfriando');
-    document.getElementById('flameFX').style.opacity = modo==='aquecendo' ? '1' : '0'; document.getElementById('iceFX').style.opacity = modo==='resfriando' ? '1' : '0';
+    document.getElementById('btnHeat').classList.toggle('active-btn', modo==='aquecendo'); 
+    document.getElementById('btnThermostat').classList.toggle('active-btn', modo==='termostato'); 
+    document.getElementById('btnCool').classList.toggle('active-btn', modo==='resfriando');
+    document.getElementById('flameFX').style.opacity = modo==='aquecendo' ? '1' : '0'; 
+    document.getElementById('iceFX').style.opacity = modo==='resfriando' ? '1' : '0';
   };
+  
   window.ajustarPotenciaChama = function(val) { document.documentElement.style.setProperty('--flame-scale', 0.5 + val*0.07); };
 
   function loopTermico() {
@@ -610,11 +581,21 @@
     document.getElementById('catalogContainer').innerHTML = html;
   }
 
-  // Exportações Globais
-  window.abrirManual = () => document.getElementById('manualModal').style.display = 'flex'; window.fecharManual = () => document.getElementById('manualModal').style.display = 'none';
-  window.resetarLaboratorio = resetarLaboratorio; window.trocarVidraria = trocarVidraria; window.iniciarAdicao = iniciarAdicao; window.pararAdicao = pararAdicao;
-  window.limparCurvaPH = limparCurvaPH; window.limparRegistro = limparRegistro;
-  
-  construirCatalogo(); resetarLaboratorio(); timerLoop = setInterval(loopTermico, 200);
-  log('🚀 LAIFT Engine Uninassau Iniciado :)', 'log-info');
+  // Exportações Finais
+  window.abrirManual = () => document.getElementById('manualModal').style.display = 'flex'; 
+  window.fecharManual = () => document.getElementById('manualModal').style.display = 'none';
+  window.resetarLaboratorio = resetarLaboratorio; 
+  window.trocarVidraria = trocarVidraria; 
+  window.iniciarAdicao = iniciarAdicao; 
+  window.pararAdicao = pararAdicao;
+  window.limparCurvaPH = limparCurvaPH; 
+  window.limparRegistro = limparRegistro;
+  window.desfazerAcao = desfazerAcao;
+
+  // Início Automático
+  construirCatalogo(); 
+  resetarLaboratorio(); 
+  atualizarUI_Missao(); // Assegura que a primeira Missão aparece ao iniciar
+  timerLoop = setInterval(loopTermico, 200);
+  log('🚀 LAIFT Engine Uninassau Iniciado com Sucesso!', 'log-info');
 })();
