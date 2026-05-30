@@ -93,18 +93,23 @@
   // 5. SISTEMA AVANÇADO DE MISSÕES
   // ==========================================
   const missoes = [
-    { titulo: "Missão 1: Neutralização", desc: "Atinge um pH entre 7.0 e 7.5. (Dica: mistura HCl e NaOH)", check: () => calcularpH() >= 7.0 && calcularpH() <= 7.5 && sys.vol >= 20 },
-    { titulo: "Missão 2: Chuva de ouro", desc: "Forma um precipitado amarelo intenso (PbI₂).", check: () => qtd('PbI2_s') > 0.1 },
-    { titulo: "Missão 3: Libertação de Gás H₂", desc: "Faz um metal (como Zinco ou Magnésio) reagir com ácido para gerar gás Hidrogénio.", check: () => qtd('H2_g') > 1 },
-    { titulo: "Missão 4: Ponto de Ebulição", desc: "Aquece a água no béquer aberto até que ela comece a evaporar.", check: () => sys.temp >= 100 && qtd('H2O_l') > 0 },
-    { titulo: "Missão 5: Hidróxido Azul", desc: "Cria um precipitado azul claro de Hidróxido de Cobre (Cu(OH)₂).", check: () => qtd('Cu(OH)2_s') > 0.1 }
+    { titulo: "Missão 1: Neutralização Básica", desc: "Atinge um pH entre 7.0 e 7.5 usando ácido e base. (Volume > 20mL).", check: () => calcularpH() >= 7.0 && calcularpH() <= 7.5 && sys.vol >= 20 },
+    { titulo: "Missão 2: Chuva Dourada", desc: "Forma um precipitado amarelo intenso de Iodeto de Chumbo (PbI₂).", check: () => qtd('PbI2_s') > 0.1 },
+    { titulo: "Missão 3: Libertação de Gás H₂", desc: "Faz um metal sólido reagir com ácido para gerar gás Hidrogénio.", check: () => qtd('H2_g') > 1 },
+    { titulo: "Missão 4: Ponto de Ebulição", desc: "Aquece a água no laboratório até que comece a evaporar ativamente (100°C).", check: () => sys.temp >= 100 && qtd('H2O_l') > 0 },
+    { titulo: "Missão 5: Hidróxido Azul", desc: "Cria um precipitado azul claro de Hidróxido de Cobre (Cu(OH)₂).", check: () => qtd('Cu(OH)2_s') > 0.1 },
+    { titulo: "Missão 6: Chuva de Prata", desc: "Mistura Nitrato de Prata (AgNO₃) com Cloreto (Ex: NaCl ou HCl) para formar AgCl.", check: () => qtd('AgCl_s') > 0.1 },
+    { titulo: "Missão 7: Gelo de Laboratório", desc: "Usa o sistema de resfriamento para baixar a temperatura da água até congelar (0°C).", check: () => sys.temp <= 0 && qtd('H2O_s') > 0 },
+    { titulo: "Missão 8: Ambiente Super Ácido", desc: "Cria uma solução altamente corrosiva com pH menor ou igual a 2.0.", check: () => calcularpH() <= 2.0 && sys.vol > 10 },
+    { titulo: "Missão 9: Ambiente Super Básico", desc: "Cria uma solução fortemente alcalina com pH maior ou igual a 12.0.", check: () => calcularpH() >= 12.0 && sys.vol > 10 },
+    { titulo: "Missão 10: Efervescência de Carbonato", desc: "Mistura um carbonato (como NaHCO₃ ou CaCO₃) com ácido para liberar CO₂.", check: () => qtd('CO2_g') > 0.5 }
   ];
   let missaoAtual = 0;
 
   function atualizarUI_Missao() {
     if (missaoAtual >= missoes.length) {
       document.getElementById('missionTitle').innerText = "🎉 Mestre Laboratorial!";
-      document.getElementById('missionDesc').innerText = "Concluíste todas as tarefas propostas com sucesso.";
+      document.getElementById('missionDesc').innerText = "Concluíste todas as 10 missões propostas com sucesso.";
       document.getElementById('missionStatus').style.display = 'none';
       if(document.getElementById('btnNextMission')) document.getElementById('btnNextMission').style.display = 'none';
       return;
@@ -133,6 +138,22 @@
       }
     }
   }
+
+  window.proximaMissao = function() { missaoAtual++; resetarLaboratorio(); atualizarUI_Missao(); };
+  
+  window.abrirLivroMissoes = function() {
+    let html = '<ul style="list-style:none; padding:0;">';
+    missoes.forEach((m, i) => {
+      let status = i < missaoAtual ? "✅ Concluída" : i === missaoAtual ? "▶ Em Progresso" : "🔒 Bloqueada";
+      let color = i < missaoAtual ? "var(--neon-green)" : i === missaoAtual ? "#ff9800" : "#546e7a";
+      html += `<li style="color:${color}; margin-bottom:12px; border-bottom:1px dashed #1e3a5f; padding-bottom:8px;"><strong>${m.titulo}</strong> <span style="font-size:0.6rem;">(${status})</span><br><span style="color:#b0bec5; font-size:0.75rem;">${m.desc}</span></li>`;
+    });
+    html += '</ul>';
+    document.getElementById('missionsList').innerHTML = html;
+    document.getElementById('missionsModal').style.display = 'flex';
+  };
+  
+  window.fecharLivroMissoes = function() { document.getElementById('missionsModal').style.display = 'none'; };
 
   // Funções do Livro de Missões exportadas para o HTML
   window.proximaMissao = function() { 
