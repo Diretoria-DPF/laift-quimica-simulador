@@ -123,11 +123,17 @@
     <div class="side-panel-right">
       
       <div class="panel">
-        <h3><span class="icon-dot" style="background:var(--neon-green)"></span> Missão Ativa</h3>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="margin:0;"><span class="icon-dot" style="background:var(--neon-green)"></span> Missão Ativa</h3>
+          <button class="btn btn-clear" style="color:var(--neon-green); border-color:var(--neon-green);" onclick="window.abrirLivroMissoes()" title="Ver todas as missões">📚 Livro</button>
+        </div>
         <div class="mission-box" id="missionBox">
-          <strong id="missionTitle">Neutralização Básica</strong>
+          <strong id="missionTitle">Missão 1: Neutralização</strong>
           <p style="font-size:0.7rem; color:#b0bec5; margin-top:4px;" id="missionDesc">Atinge um pH entre 7.0 e 7.5 com um volume superior a 20 mL.</p>
-          <span class="badge" id="missionStatus" style="border-color:#ff9800; color:#ff9800;">Pendente</span>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <span class="badge" id="missionStatus" style="border-color:#ff9800; color:#ff9800;">Pendente</span>
+            <button class="btn btn-play" id="btnNextMission" style="display:none; padding:4px 8px; font-size:0.6rem;" onclick="window.proximaMissao()">Próxima ⏭</button>
+          </div>
         </div>
       </div>
       
@@ -149,10 +155,17 @@
           <button class="btn btn-clear" onclick="window.limparRegistro()">🗑 Limpar</button>
         </div>
         <div class="log-stream" id="logStream" style="margin-top:6px;">
-          <span style="color:#546e7a;">[Sistema] Laboratório iniciado.</span>
+          <span style="color:#546e7a;">[Sistema] Laboratório Uninassau iniciado :).</span>
         </div>
       </div>
       
+    </div>
+  </div> <div class="manual-modal" id="missionsModal">
+    <div class="manual-content">
+      <h3 style="color:var(--neon-green)">📚 Livro de Missões Químicas</h3>
+      <p style="font-size:0.8rem; margin-bottom:1rem;">Complete os objetivos no laboratório para desbloquear a próxima etapa.</p>
+      <div id="missionsList" style="background:#020617; padding:10px; border-radius:8px; border:1px solid #1e3a5f;"></div>
+      <button class="close-manual" style="background:#37474f;" onclick="window.fecharLivroMissoes()">Fechar Livro</button>
     </div>
   </div>
 
