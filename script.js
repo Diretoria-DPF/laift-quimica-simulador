@@ -94,7 +94,7 @@
   // ==========================================
   const missoes = [
     { titulo: "Missão 1: Neutralização", desc: "Atinge um pH entre 7.0 e 7.5. (Dica: mistura HCl e NaOH)", check: () => calcularpH() >= 7.0 && calcularpH() <= 7.5 && sys.vol >= 20 },
-    { titulo: "Missão 2: Chuva Dourada", desc: "Forma um precipitado amarelo intenso (PbI₂).", check: () => qtd('PbI2_s') > 0.1 },
+    { titulo: "Missão 2: Chuva de ouro", desc: "Forma um precipitado amarelo intenso (PbI₂).", check: () => qtd('PbI2_s') > 0.1 },
     { titulo: "Missão 3: Libertação de Gás H₂", desc: "Faz um metal (como Zinco ou Magnésio) reagir com ácido para gerar gás Hidrogénio.", check: () => qtd('H2_g') > 1 },
     { titulo: "Missão 4: Ponto de Ebulição", desc: "Aquece a água no béquer aberto até que ela comece a evaporar.", check: () => sys.temp >= 100 && qtd('H2O_l') > 0 },
     { titulo: "Missão 5: Hidróxido Azul", desc: "Cria um precipitado azul claro de Hidróxido de Cobre (Cu(OH)₂).", check: () => qtd('Cu(OH)2_s') > 0.1 }
